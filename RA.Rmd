@@ -14,7 +14,7 @@ library(ggthemes)
 palmerpenguins::penguins
 ```
 
-#Data Visualization Exercise
+# Data Visualization Exercise
 
 ```{}
 #1, How many rows are in penguins? How many columns?
@@ -110,7 +110,8 @@ ggplot() +
 #Yes, the two graphs will look as same. Because the input of variables are the same for both graphs. They are only different in the way of organizing data (the second one specifies the input in geom(), while the input in those two are the same as mapping.)
 ```
 
-#2.43 Exercise
+## 2.43 Exercise
+
 1, Make a bar plot of species of penguins, where you assign species to the y aesthetic. How is this plot different?
 ```{r}
 #The plot appears to be 'flipped' so the species are appearing on the y axis.
@@ -146,7 +147,8 @@ ggplot(diamonds, aes(x = carat)) +
 #The binwidth of 1.5 shows the most interesting pattern with only 3 cuts to the data.
 ```
 
-#2.5.5
+### 2.5.5
+
 1, The mpg data frame that is bundled with the ggplot2 package contains 234 observations collected by the US Environmental Protection Agency on 38 car models. Which variables in mpg are categorical? Which variables are numerical? (Hint: Type ?mpg to read the documentation for the dataset.) How can you see this information when you run mpg?
 ```{r}
 str(mpg)
