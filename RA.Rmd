@@ -14,7 +14,7 @@ library(ggthemes)
 palmerpenguins::penguins
 ```
 
-#Data Visualization Exercise.
+#Data Visualization Exercise
 
 ```{}
 #1, How many rows are in penguins? How many columns?
