@@ -5,7 +5,7 @@ date: "2023-09-23"
 output: html_document
 ---
 
-#
+
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggplot2)
@@ -13,7 +13,9 @@ library(palmerpenguins)
 library(ggthemes)
 palmerpenguins::penguins
 ```
+
 #Data Visualization Exercise.
+
 ```{}
 #1, How many rows are in penguins? How many columns?
 A: Type "penguins" in console, so 344 rows and 8 columns.
