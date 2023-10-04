@@ -544,27 +544,28 @@ Store back in the appropriate place.
 You haven’t yet learned all the functions you’d need to actually perform these operations, but you should still be able to think through the transformations you’d need.
 ```{r}
 #Extract the number of TB cases per country per year.
-(table2_cases <- table2 %>%
-  filter(type == "cases"))
+table2_cases <- table2 %>%
+  filter(type == "cases")
 
 #Extract the matching population per country per year
-(table2_pop <- table2 %>%
-    filter(type == "population"))
+table2_pop <- table2 %>%
+    filter(type == "population")
 
-#Divide cases by population, and multiply by 10000 & Store back in the appropriate place..
-(table2_com <- tibble(
+#Divide cases by population, and multiply by 10000 
+table2_com <- tibble(
   country = table2_cases$country,
   year = table2_cases$year,
   cases = table2_cases$count,
   population = table2_pop$count
-  ))
-
-(table2_com <- table2_com %>%
-    mutate(rate = (cases / population) * 10000))
-
+  )
+#Store back in the appropriate place.
+table2_com <- table2_com %>%
+    mutate(rate = (cases / population) * 10000)
 ```
 
+-Notes for new verbs: pivot_longer(), from row to column/parse_number()/names_sep =, delete certain character/distinct ()/pivot_wider(), from column to row/names_from = "some column/row"/id_cols = starts_with ("select specific values") 
 
+-Difference between tibble() and tribble ()?
 # 7.3 Exercise.
 
 1, Go to the RStudio Tips Twitter account, https://twitter.com/rstudiotips and find one tip that looks interesting. Practice using it!
