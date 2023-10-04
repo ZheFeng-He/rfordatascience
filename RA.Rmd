@@ -85,7 +85,7 @@ ggplot(data = penguins,
             mapping = aes(x = flipper_length_mm, y = body_mass_g)) + 
        geom_point(aes(color = bill_depth_mm)) + 
        geom_smooth() 
-#bill_depth_mm should be mapped to geom_point(aes(color=)), and at the geom level. (BUT WHY???????)
+#bill_depth_mm should be mapped to geom_point(aes(color=)), and at the geom level. (BUT WHY?)
 ```
 
 
@@ -120,7 +120,7 @@ ggplot() +
     mapping = aes(x = flipper_length_mm, y = body_mass_g)
   )
 ```{r}
-#A: Yes, the two graphs will look as same. Because the input of variables are the same for both graphs. They are only different in the way of organizing data (the second one specifies the input in geom(), while the input in those two are the same as mapping.) (Is this a proper answer????????)
+#A: Yes, the two graphs will look as same. Because the input of variables are the same for both graphs. They are only different in the way of organizing data (the second one specifies the input in geom(), while the input in those two are the same as mapping.) (Is this a proper answer?)
 ```
 
 # 2.43 Exercise
@@ -566,8 +566,78 @@ table2_com <- table2_com %>%
 -Notes for new verbs: pivot_longer(), from row to column/parse_number()/names_sep =, delete certain character/distinct ()/pivot_wider(), from column to row/names_from = "some column/row"/id_cols = starts_with ("select specific values") 
 
 -Difference between tibble() and tribble ()?
+
 # 7.3 Exercise.
 
-1, Go to the RStudio Tips Twitter account, https://twitter.com/rstudiotips and find one tip that looks interesting. Practice using it!
+-1, Go to the RStudio Tips Twitter account, https://twitter.com/rstudiotips and find one tip that looks interesting. Practice using it!
 
-2, What other common mistakes will RStudio diagnostics report? Read https://support.posit.co/hc/en-us/articles/205753617-Code-Diagnostics to find out.
+-2, What other common mistakes will RStudio diagnostics report? Read https://support.posit.co/hc/en-us/articles/205753617-Code-Diagnostics to find out.
+
+# 8.2.4 
+-What function would you use to read a file where fields were separated with “|”?
+```{r}
+#We could use "read_delim" to read files containing delimiter
+```
+
+-Apart from file, skip, and comment, what other arguments do read_csv() and read_tsv() have in common?
+```{r}
+#Common: col_names, col_types, col_select, id, locale, na, trim_ws, quoted_na, quote, comment,  skip, n_max, guess_max, progress, name_repair, num_threads, show_col_types, skip_empty_rows, lazy
+```
+
+-What are the most important arguments to read_fwf()?
+```{r}
+#I would say "fwf_width" and "fwf_positions" are most important, as they specify fields which defines vectors for extract data.
+```
+
+-Sometimes strings in a CSV file contain commas. To prevent them from causing problems, they need to be surrounded by a quoting character, like " or '. By default, read_csv() assumes that the quoting character will be ". To read the following text into a data frame, what argument to read_csv() do you need to specify?
+
+"x,y\n1,'a,b'"
+```{r}
+#Probably use "quoted_na = TRUE" or "quote = "
+read_csv("x,y\n1,'a,b'", quote = "'")
+```
+-Identify what is wrong with each of the following inline CSV files. What happens when you run the code?
+
+read_csv("a,b\n1,2,3\n4,5,6")
+read_csv("a,b,c\n1,2\n1,2,3,4")
+read_csv("a,b\n\"1")
+read_csv("a,b\n1,2\na,b")
+read_csv("a;b\n1;3")
+
+```{r}
+read_csv("a,b\n1,2,3\n4,5,6")
+#Prasing issues in column specification. Second row has two values, while the third row has three values.
+
+read_csv("a,b,c\n1,2\n1,2,3,4")
+#There are three header columns in the data frame, while the following row includes four values, which does not match the number of colums.
+
+read_csv("a,b\n\"1")
+#The dataset includes two header columns but only specifies one value in the firts row.
+
+read_csv("a,b\n1,2\na,b")
+
+read_csv("a;b\n1;3")
+#For dataset includes ";", should use read_csv2()
+```
+
+-Practice referring to non-syntactic names in the following data frame by:
+
+Extracting the variable called 1.
+Plotting a scatterplot of 1 vs. 2.
+Creating a new column called 3, which is 2 divided by 1.
+Renaming the columns to one, two, and three.
+annoying <- tibble(
+  `1` = 1:10,
+  `2` = `1` * 2 + rnorm(length(`1`))
+)
+```{r}
+annoying <- tibble(
+  `1` = 1:10,
+  `2` = `1` * 2 + rnorm(length(`1`))
+)
+annoying
+
+
+```
+
+-The meaning of "\n1"
