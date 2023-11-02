@@ -1080,14 +1080,13 @@ library(patchwork)
 
  1.Create one plot on the fuel economy data with customized title, subtitle, caption, x, y, and color labels.
 ```{r}
-  ggplot(mpg, aes(x = hwy, displ))+
-  geom_point(aes(colour = class))+
+  ggplot()+
+  geom_point(data = mpg, aes( x = hwy, y = displ, colour = drv, shape = drv))+
   labs( x = "Engine displacement (L)",
         y = "Highway fuel economy (mpg)",
         title = "Large engine displacement results in lower gas mileage performance",
         subtitle = "SUV and pickup classes have more small engine & high mpg combination",
-        caption = "Dataset from tidyverse",
-        colour = "Car class")
+        caption = "Dataset from tidyverse")
 ```
 
  2.Recreate the following plot using the fuel economy data. Note that both the colors and shapes of points vary by type of drive train.
@@ -1099,3 +1098,1108 @@ library(patchwork)
         shape = "Type of drive train")
 ```
  3.Take an exploratory graphic that you’ve created in the last month, and add informative titles to make it easier for others to understand.
+ 
+# 12.3 Annotations
+
+## 12.3.1 Exercises
+
+1.Use geom_text() with infinite positions to place text at the four corners of the plot.
+```{r}
+label <- tribble(
+  ~displ, ~hwy, ~label, ~vjust, ~hjust,
+  Inf, Inf, "Top right", "top", "right",
+  Inf, -Inf, "Bottom right", "bottom", "right",
+  -Inf, Inf, "Top left", "top", "left",
+  -Inf, -Inf, "Bottom left", "bottom", "left"
+)
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  geom_text(aes(label = label, vjust = vjust, hjust = hjust), data = label)
+```
+
+2. Use annotate() to add a point geom in the middle of your last plot without having to create a tibble. Customize the shape, size, or color of the point.
+```{r}
+ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point() +
+   annotate(geom = "label", x= max(mpg$displ), y= max(mpg$hwy),
+    label = "Top right", vjust = "top",
+    hjust = "right", color = "red"
+  ) +
+   annotate(geom = "label", x= min(mpg$displ), y= max(mpg$hwy),
+    label = "Top left", vjust = "top",
+    hjust = "left", color = "red"
+  ) +
+   annotate(geom = "label", x= max(mpg$displ), y= min(mpg$hwy),
+    label = "Bottom right", vjust = "bottom",
+    hjust = "right", color = "red"
+  ) +
+   annotate(geom = "label", x= min(mpg$displ), y= min(mpg$hwy),
+    label = "Bottom left", vjust = "bottom",
+    hjust = "left", color = "red"
+  ) 
+```
+
+3. How do labels with geom_text() interact with faceting? How can you add a label to a single facet? How can you put a different label in each facet? (Hint: Think about the dataset that is being passed to geom_text().)
+```{r}
+
+# labels in each different plots
+label <- tibble(
+  displ = Inf,
+  hwy = Inf,
+  class = unique(mpg$class),
+  label = str_c("Label for ", class)
+)
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  geom_text(aes(label = label),
+    data = label, vjust = "top", hjust = "right",
+    size = 3
+  ) +
+  facet_wrap(~class)
+```
+
+
+4. What arguments to geom_label() control the appearance of the background box?
+
+-label.padding: padding around label
+-label.r: amount of rounding in the corners
+-label.size: size of label border
+
+5. What are the four arguments to arrow()? How do they work? Create a series of plots that demonstrate the most important options.
+ 
+-angle : angle of arrow head
+-length : length of the arrow head
+-ends: ends of the line to draw arrow head
+-type: "open" or "close": whether the arrow head is a closed or open triangle
+
+## 12.4 Scales
+
+### 12.4.1 Default scales
+- scale_ followed by the name of the aesthetic, then _, then the name of the scale. The default scales are named according to the type of variable they align with: continuous, discrete, datetime, or date. scale_x_continuous() puts the numeric values from displ on a continuous number line on the x-axis, scale_color_discrete() chooses colors for each of the class of car, etc.
+
+### 12.4.2 Axis ticks and legend keys
+
+-There are two primary arguments that affect the appearance of the ticks on the axes and the keys on the legend: breaks and labels. Breaks controls the position of the ticks, or the values associated with the keys. Labels controls the text label associated with each tick/key.
+
+-We can use the labels in the same way. label_dollar will add dollar sign. label_percent() add percentage.
+
+### 12.4.3 Legend layout
+
+-To control the overall position of the legend, you need to use a theme() setting.The theme setting legend.position controls where the legend is drawn.
+
+-To control the display of individual legends, use guides() along with guide_legend() or guide_colorbar(). Note that the name of the argument in guides() matches the name of the aesthetic, just like in labs().
+
+### 12.4.4 Replacing a scale
+
+-It’s very useful to plot transformations of your variable. The ColorBrewer scales are documented online at https://colorbrewer2.org/ and made available in R via the RColorBrewer package, by Erich Neuwirth. 
+
+-For continuous color, you can use the built-in scale_color_gradient() or scale_fill_gradient(). If you have a diverging scale, you can use scale_color_gradient2().
+
+-Note that all color scales come in two varieties: scale_color_*() and scale_fill_*() for the color and fill aesthetics respectively (the color scales are available in both UK and US spellings).
+
+### 12.4.5 Zooming
+
+-There are three ways to control the plot limits:
+
+-Adjusting what data are plotted.
+-Setting the limits in each scale.
+-Setting xlim and ylim in coord_cartesian().
+
+-To zoom in on a region of the plot, it’s generally best to use coord_cartesian().
+
+-Setting the limits on individual scales is generally more useful if you want to expand the limits, e.g., to match scales across different plots.
+
+### 12.4.6 Exercises
+
+1. Why doesn’t the following code override the default scale?
+```{r}
+df <- tibble(
+  x = rnorm(10000),
+  y = rnorm(10000)
+)
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  scale_color_gradient(low = "white", high = "red") +
+  coord_fixed()
+```
+-Because the colors in geom_hex() are set by the fill aesthetic, not the color aesthetic.
+
+2. What is the first argument to every scale? How does it compare to labs()?
+
+-The first argument to every scale is the label for the scale. It is equivalent to using the labs function.
+
+
+3. Change the display of the presidential terms by:
+
+a.Combining the two variants that customize colors and x axis breaks.
+b.Improving the display of the y axis.
+c.Labelling each term with the name of the president.
+d.Adding informative plot labels.
+e.Placing breaks every 4 years (this is trickier than it seems!).
+```{r}
+fouryears <- lubridate::make_date(seq(year(min(presidential$start)),
+  year(max(presidential$end)),
+  by = 4
+), 1, 1)
+
+presidential %>%
+  mutate(
+    id = 33 + row_number(),
+    name_id = fct_inorder(str_c(name, " (", id, ")"))
+  ) %>%
+  ggplot(aes(start, name_id, colour = party)) +
+  geom_point() +
+  geom_segment(aes(xend = end, yend = name_id)) +
+  scale_colour_manual("Party", values = c(Republican = "red", Democratic = "blue")) +
+  scale_y_discrete(NULL) +
+  scale_x_date(NULL,
+    breaks = presidential$start, date_labels = "'%y",
+    minor_breaks = fouryears
+  ) +
+  ggtitle("Terms of US Presdients",
+    subtitle = "Roosevelth (34th) to Obama (44th)"
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+```
+4.First, create the following plot. Then, modify the code using override.aes to make the legend easier to see.
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(aes(color = cut), alpha = 1/20)+
+  theme(legend.position = "bottom")+
+  guides(color = guide_legend(nrow=2, override.aes = list(alpha = 1)))
+```
+
+
+## 12.5 Themes
+
+### 12.5.1 Exercises
+1. Pick a theme offered by the ggthemes package and apply it to the last plot you made.
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(aes(color = cut), alpha = 1/20)+
+  theme(legend.position = c(0.6, 0.7),
+    legend.direction = "horizontal",
+    legend.box.background = element_rect(color = "black"),
+    plot.title = element_text(face = "bold"),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0))+
+  guides(color = guide_legend(nrow=2, override.aes = list(alpha = 1)))
+```
+
+## 12.6 Layout
+
+### 12.6.1 Exercises
+1. What happens if you omit the parentheses in the following plot layout. Can you explain why this happens?
+```{r}
+p1 <- ggplot(mpg, aes(x = displ, y = hwy)) + 
+  geom_point() + 
+  labs(title = "Plot 1")
+p2 <- ggplot(mpg, aes(x = drv, y = hwy)) + 
+  geom_boxplot() + 
+  labs(title = "Plot 2")
+p3 <- ggplot(mpg, aes(x = cty, y = hwy)) + 
+  geom_point() + 
+  labs(title = "Plot 3")
+(p1 | p2) / p3
+
+```
+
+-The plot layout would not be generated. Because，the parentheses designs the position of different plots in the layout.
+
+2. Using the three plots from the previous exercise, recreate the following patchwork.
+
+Three plots: Plot 1 is a scatterplot of highway mileage versus engine size. Plot 2 is side-by-side box plots of highway mileage versus drive train. Plot 3 is side-by-side box plots of city mileage versus drive train. Plots 1 is on the first row. Plots 2 and 3 are on the next row, each span half the width of Plot 1. Plot 1 is labelled "Fig. A", Plot 2 is labelled "Fig. B", and Plot 3 is labelled "Fig. C".
+
+```{r}
+po1 <- ggplot(mpg, aes(x = displ, y = hwy)) + 
+  geom_point() + 
+  labs(title = "Plot 1")
+
+po2 <- ggplot(mpg, aes(x = drv, y = hwy)) + 
+  geom_boxplot() + 
+  labs(title = "Plot 2")
+
+po3 <- ggplot(mpg, aes(x = cty, y = hwy)) + 
+  geom_point() + 
+  labs(title = "Plot 3")
+po1/(po2 | po3)
+```
+
+
+# 13  Logical vectors
+
+## 13.1 Introduction
+
+### 13.1.1 Prerequisites
+```{r}
+library(tidyverse)
+library(nycflights13)
+#do to a variable inside a data frame with mutate()
+```
+
+## 13.2 Comparison
+-We use filter() and <, <=, >, >=, != to make Comparison.
+-Use digits to compare floating point
+
+
+1. How does dplyr::near() work? Type near to see the source code. Is sqrt(2)^2 near 2?
+```{r}
+near(sqrt(2)^2, 2)
+```
+
+2. Use mutate(), is.na(), and count() together to describe how the missing values in dep_time, sched_dep_time and dep_delay are connected.
+
+```{r}
+flights |> 
+    mutate(dep_time_na = is.na(dep_time),
+         sched_dep_time_na = is.na(sched_dep_time),
+         dep_delay_na = is.na(dep_delay)) |>
+  count(dep_time_na, sched_dep_time_na, dep_delay_na)
+```
+
+
+## 13.3 Boolean algebra
+
+1.Find all flights where arr_delay is missing but dep_delay is not. Find all flights where neither arr_time nor sched_arr_time are missing, but arr_delay is.
+```{r}
+#Find all flights where arr_delay is missing but dep_delay is not.
+flights |>
+  filter(is.na(arr_delay & ! dep_delay))
+
+#Find all flights where neither arr_time nor sched_arr_time are missing
+nycflights13::flights |>
+  filter(is.na(sched_arr_time & arr_time & !arr_delay))
+```
+
+
+2.How many flights have a missing dep_time? What other variables are missing in these rows? What might these rows represent?
+```{r}
+#How many flights have a missing dep_time
+flights |>
+  count(is.na(dep_time))
+#What other variables are missing in these rows?
+summary(flights)
+```
+
+-These rows might represent the cancelled flight
+
+3.Assuming that a missing dep_time implies that a flight is cancelled, look at the number of cancelled flights per day. Is there a pattern? Is there a connection between the proportion of cancelled flights and the average delay of non-cancelled flights?
+
+```{r, message=FALSE}
+#definitely cancelled.
+cancelled_per_day <-
+  flights %>%
+  mutate(cancelled = (is.na(arr_delay) | is.na(dep_delay))) %>%
+  group_by(year, month, day) %>%
+  summarise(
+    cancelled_num = sum(cancelled),
+    flights_num = n(),
+  )
+# It is likely that days with more flights would have a higher probability of cancellations
+
+ggplot(cancelled_per_day) +
+  geom_point(aes(x = flights_num, y = cancelled_num))
+
+#Is there a connection between the proportion of cancelled flights and the average delay of non-cancelled flights?
+
+flights %>% group_by(month, day) %>%
+  summarize(avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+            prop_cancelled = sum(is.na(dep_time)/n())) %>%
+  ggplot(mapping = aes(x = avg_dep_delay, y = prop_cancelled)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE)
+```
+
+
+## 13.4 Summaries
+
+### 13.4.1 Logical summaries
+
+-There are two main logical summaries: any() and all(). any(x) is the equivalent of |; it’ll return TRUE if there are any TRUE’s in x. all(x) is equivalent of &; it’ll return TRUE only if all values of x are TRUE’s.
+
+
+### 13.4.4 Exercises
+1.What will sum(is.na(x)) tell you? How about mean(is.na(x))?
+
+-sum(is.na(x)) will return the number of NAs in x by the number of TRUES. mean() gives the proportion of NAs in x by the form of TRUES
+
+2.What does prod() return when applied to a logical vector? What logical summary function is it equivalent to? What does min() return when applied to a logical vector? What logical summary function is it equivalent to? Read the documentation and perform a few experiments.
+
+-When applied to a lgocial vector, prod() will return the product of all the elements in the vector, treating TRUE as 1 and FALSE as 0. It equals to the & 
+-When applied the min() function to a logical vector, it returns FALSE if there are any FALSE values in the vector, and TRUE if all values are TRUE. It's equivalent to using the all() function.
+
+## 13.5 Conditional transformations
+
+### 13.5.1 if_else() 
+-In if_else(), the first argument, condition, is a logical vector, the second, true, gives the output when the condition is true, and the third, false, gives the output if the condition is false. There’s an optional fourth argument, missing which will be used if the input is NA.
+
+### 13.5.2 case_when()
+-It takes pairs that look like condition ~ output. condition must be a logical vector; when it’s TRUE, output will be used.
+
+### 13.5.3 Compatible types
+-Note that both if_else() and case_when() require compatible types in the output. 
+
+### Exerciese
+ 
+1. A number is even if it’s divisible by two, which in R you can find out with x %% 2 == 0. Use this fact and if_else() to determine whether each number between 0 and 20 is even or odd.
+```{r}
+numbers <- 0:20
+result <- if_else(numbers %% 2 == 0, "Even", "Odd")
+result
+```
+
+2. Given a vector of days like x <- c("Monday", "Saturday", "Wednesday"), use an ifelse() statement to label them as weekends or weekdays.
+```{r}
+x <- c("Monday", "Saturday", "Wednesday")
+result <- ifelse(x %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+result
+```
+
+3. Use ifelse() to compute the absolute value of a numeric vector called x.
+```{r}
+x <- c(-5, 3, -7, 8, -2, 4, 6, -64, 15, -17)
+abs_x <- ifelse(x < 0, -x, x)
+abs_x
+```
+
+4. Write a case_when() statement that uses the month and day columns from flights to label a selection of important US holidays (e.g., New Years Day, 4th of July, Thanksgiving, and Christmas). First create a logical column that is either TRUE or FALSE, and then create a character column that either gives the name of the holiday or is NA.
+```{r}
+flights %>%
+  mutate(
+    is_holiday = case_when(
+      (month == 1 & day == 1) ~ TRUE,          # New Year's Day
+      (month == 7 & day == 4) ~ TRUE,          # 4th of July
+      (month == 11 & day == 22) ~ TRUE,       # Thanksgiving
+      (month == 12 & day == 25) ~ TRUE,       # Christmas
+      TRUE ~ FALSE                            # Non-holiday
+    ),
+    holiday_name = case_when(
+      is_holiday ~ "Holiday",
+      TRUE ~ NA_character_))
+```
+
+# 14  Numbers
+
+## 14.1 Introduction
+
+-We’ll start by giving you a couple of tools to make numbers if you have strings, and then going into a little more detail of count(). Then we’ll dive into various numeric transformations that pair well with mutate(), including more general transformations that can be applied to other types of vectors, but are often used with numeric vectors. We’ll finish off by covering the summary functions that pair well with summarize() and show you how they can also be used with mutate().
+
+### 14.1.1 Prerequisites
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+## 14.2 Making numbers
+```{r}
+x <- c("1.2", "5.6", "1e3")
+parse_double(x)
+
+
+# Use parse_number() when the string contains non-numeric text that you want to ignore.
+x <- c("$1,234", "USD 3,513", "59%")
+parse_number(x)
+
+```
+
+## 14.3 Counts
+```{r}
+#How count() works
+flights |> count(dest)
+
+#If you want to see the most common values, add sort = TRUE
+flights |> count(dest, sort = TRUE)
+
+#if you want to see all the values, you can use |> View() or |> print(n = Inf).
+#You can perform the same computation “by hand” with group_by(), summarize() and n(). 
+
+flights |> 
+  group_by(dest) |> 
+  summarize(
+    n = n(),
+    delay = mean(arr_delay, na.rm = TRUE))
+
+#n_distinct(x) counts the number of distinct (unique) values of one or more variables. 
+flights |> 
+  group_by(dest) |> 
+  summarize(carriers = n_distinct(carrier)) |> 
+  arrange(desc(carriers))
+
+#A weighted count is a sum. For example you could “count” the number of miles each plane flew:
+flights |> 
+  group_by(tailnum) |> 
+  summarize(miles = sum(distance))
+
+#Weighted counts are a common problem so count() has a wt argument that does the same thing:
+flights |> count(tailnum, wt = distance)
+
+#You can count missing values by combining sum() and is.na(). 
+flights |> 
+  group_by(dest) |> 
+  summarize(n_cancelled = sum(is.na(dep_time))) 
+```
+
+### 14.3.1 Exercises
+
+1.How can you use count() to count the number rows with a missing value for a given variable?
+
+```{r}
+flights |> 
+  group_by(dest) |> 
+  count(is.na(dep_time))
+```
+
+2.Expand the following calls to count() to instead use group_by(), summarize(), and arrange():
+flights |> count(dest, sort = TRUE)
+
+flights |> count(tailnum, wt = distance)
+```{r}
+flights |>
+  group_by(dest) |>
+  summarize(n = n()) |>
+  arrange(desc(n))
+
+flights |>
+  group_by(tailnum) |>
+  summarize(total_distance = sum(distance, na.rm = TRUE)) |>
+  arrange(desc(total_distance))
+```
+
+## 14.4 Numeric transformations
+
+### 14.4.1 Arithmetic and recycling rules
+
+1. Explain in words what each line of the code used to generate Figure 14.1 does.
+```{r}
+flights |>  #Designate flight data set for extracting 
+  group_by(hour = sched_dep_time %/% 100) |>  #This line groups the data by the "hour" variable, which is created by dividing the "sched_dep_time" column by 100 (to extract the hour portion of the departure time). 
+  summarize(prop_cancelled = mean(is.na(dep_time)), n = n()) |>  # It calculates the proportion of canceled flights (prop_cancelled) using the mean of is.na(dep_time) and also calculates the total count of flights (n) in each group.
+  filter(hour > 1) |> # Filter out groups where the "hour" is greater than 1
+  ggplot(aes(x = hour, y = prop_cancelled)) + #Plot with "hour" on the x-axis and "prop_cancelled" on the y-axis
+  geom_line(color = "grey50") + # This line adds a line layer to the plot, creating a line plot. The "color" parameter sets the color of the line to grey50.
+  geom_point(aes(size = n))#  Add point markers to the plot, where the size of the points is mapped to the "n" variable. 
+```
+
+2. What trigonometric functions does R provide? Guess some names and look up the documentation. Do they use degrees or radians?
+
+-sin(x): Returns the sine of the angle x, where x is in radians.
+-cos(x): Returns the cosine of the angle x, where x is in radians.
+-tan(x): Returns the tangent of the angle x, where x is in radians.
+-These functions typically use radians for angle measurement. 
+
+3. Currently dep_time and sched_dep_time are convenient to look at, but hard to compute with because they’re not really continuous numbers. You can see the basic problem by running the code below: there’s a gap between each hour.
+```{r warning=FALSE}
+#Original
+flights |> 
+  filter(month == 1, day == 1) |> 
+  ggplot(aes(x = sched_dep_time, y = dep_delay)) +
+  geom_point()
+
+#Modification
+flights |>
+  filter(month == 1, day == 1) |>
+  ggplot(aes(x = sched_dep_time, y = dep_delay)) +
+  geom_point() +
+  scale_x_continuous(breaks = seq(0, 2400, by = 100))
+```
+
+4. Convert them to a more truthful representation of time (either fractional hours or minutes since midnight).
+
+Round dep_time and arr_time to the nearest five minutes.
+```{r}
+# Convert dep_time and arr_time to fractional hours
+flights <- flights |>
+  mutate(
+    dep_time = floor(dep_time / 100) + (dep_time %% 100) / 60,
+    arr_time = floor(arr_time / 100) + (arr_time %% 100) / 60
+  )
+
+# Round dep_time and arr_time to the nearest five minutes
+
+flights <- flights |>
+  mutate(
+    dep_time = round(dep_time * 12) / 12,  # 5 minutes per unit
+    arr_time = round(arr_time * 12) / 12
+  )
+```
+
+## 14.5 General transformations
+
+### 14.5.1 Ranks
+
+```{r}
+#Note that the smallest values get the lowest ranks; use desc(x) to give the largest values the smallest ranks:
+x <- c(1, 2, 2, 3, 4, NA)
+min_rank(desc(x))
+```
+-View documents of  dplyr::row_number(), dplyr::dense_rank(), dplyr::percent_rank(), and dplyr::cume_dist()
+
+### 14.5.2 Offsets
+
+```{r}
+#dplyr::lead() and dplyr::lag() allow you to refer the values just before or just after the “current” value. They return a vector of the same length as the input, padded with NAs at the start or end:
+
+x <- c(2, 5, 11, 11, 19, 35)
+lag(x)
+lead(x)
+
+#x - lag(x) gives you the difference between the current and previous value.
+x - lag(x)
+
+#x == lag(x) tells you when the current value changes.
+x == lag(x)
+```
+
+### 14.5.3 Consecutive identifiers
+
+- cumsum() will increment group by one.
+- Another approach for creating grouping variables is consecutive_id(), which starts a new group every time one of its arguments changes. 
+- To keep the first row from each repeated x, you could use group_by(), consecutive_id(), and slice_head()
+
+### Exercise
+
+1.Find the 10 most delayed flights using a ranking function. How do you want to handle ties? Carefully read the documentation for min_rank().
+```{r}
+flights |>
+  arrange(desc(dep_delay)) |> 
+  mutate(rank = min_rank(desc(dep_delay))) |>  
+  filter(rank <= 10) 
+```
+
+2.Which plane (tailnum) has the worst on-time record?
+```{r}
+flights |>
+  group_by(tailnum) |>
+  summarize(average_delay = mean(dep_delay, na.rm = TRUE)) |>
+  arrange(average_delay, na.last = TRUE)
+```
+
+3.What time of day should you fly if you want to avoid delays as much as possible?
+```{r}
+flights <- flights |>
+  mutate(hour = as.numeric(substring(sched_dep_time, 1, 2)))
+
+average_delay_by_hour <- flights |>
+  group_by(hour) |>
+  summarize(average_delay = mean(dep_delay, na.rm = TRUE))
+
+average_delay_by_hour |>
+  filter(average_delay == min(average_delay))
+```
+
+4.What does flights |> group_by(dest) |> filter(row_number() < 4) do? What does flights |> group_by(dest) |> filter(row_number(dep_delay) < 4) do?
+
+-The first line of codes filters the grouped data to keep only the rows where the row number (order within each destination group) is less than 4 by 'dest'
+-The second line  filters the data based on the row numbers within each destination group considering the 'dep_delay' column. It selects the first three rows within each destination group
+
+5.For each destination, compute the total minutes of delay. For each flight, compute the proportion of the total delay for its destination.
+```{r}
+#Calculate the total minutes of delay for each destination
+destination_dt <- flights |>
+  group_by(dest) |>
+  summarize(total_delay = sum(dep_delay, na.rm = TRUE))
+
+#Join the origianl dataset
+new_flights <- flights |>
+  left_join(destination_dt, by = "dest")
+
+#Calculate the proportion of the total delay for each flight's destination
+new_flights |>
+  mutate(proportion_of_total_delay = dep_delay / total_delay)
+```
+
+6.Delays are typically temporally correlated: even once the problem that caused the initial delay has been resolved, later flights are delayed to allow earlier flights to leave. Using lag(), explore how the average flight delay for an hour is related to the average delay for the previous hour.
+```{r}
+#The original set
+flights |> 
+  mutate(hour = dep_time %/% 100) |> 
+  group_by(year, month, day, hour) |> 
+  summarize(
+    dep_delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) |> 
+  filter(n > 5)
+
+#Modified
+flights |>
+  mutate(hour = dep_time %/% 100) |>
+  group_by(year, month, day, hour) |>
+  summarize(
+    dep_delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) |>
+  filter(n > 5) |>
+  mutate(prev_hour_delay = lag(dep_delay)) |>
+  na.omit()
+```
+-It seemingly the higher previous_hours_delay would cause higher average flight delay for an hour.
+
+7.Look at each destination. Can you find flights that are suspiciously fast (i.e. flights that represent a potential data entry error)? Compute the air time of a flight relative to the shortest flight to that destination. Which flights were most delayed in the air?
+```{r}
+#Find the shortest flight to each destination
+shortest_flight <- flights |>
+  group_by(dest) |>
+  filter(air_time == min(air_time)) |>
+  select(dest, shortest_time = air_time)
+shortest_flight
+#Compute the air time of a flight relative to the shortest flight to that destination.
+flights |>
+  left_join(shortest_flight, by = "dest") |> 
+  mutate(relative_air_time = air_time / shortest_time) |>
+  arrange(desc(relative_air_time)) |>
+  head(10)
+```
+-Flight N729JB, N531JB, and N566JB are the top three most delayed in the air ?
+
+8.Find all destinations that are flown by at least two carriers. Use those destinations to come up with a relative ranking of the carriers based on their performance for the same destination.
+```{r}
+#Find all destinations that are flown by at least two carriers.
+destinations_with_twomore_carriers <- flights |>
+  group_by(dest) |>
+  mutate(carrier_count = n_distinct(carrier)) |>
+  filter(carrier_count >= 2) |>
+  distinct(dest)
+
+#Lets see the relative ranking of the carriers based on their performance for the same destination.
+flights |>
+  filter(dest %in% destinations_with_twomore_carriers$dest) |>
+  group_by(carrier, dest) |>
+  summarize(avg_dep_delay = mean(dep_delay, na.rm = TRUE)) |>
+  group_by(carrier) |>
+  summarize(relative_rank = mean(avg_dep_delay, na.rm = TRUE)) |>
+  arrange(relative_rank)
+```
+-Seemingly the UA has the worst performance for the same destination.
+
+## 14.6 Numeric summaries
+
+### 14.6.1 Center
+
+-mean(), median()
+
+### 14.6.2 Minimum, maximum, and quantiles
+
+-min() and max() will give you the largest and smallest values.
+
+-quantile() is a generalization of the median: quantile(x, 0.25) will find the value of x that is greater than 25% of the values, quantile(x, 0.5) is equivalent to the median, and quantile(x, 0.95) will find the value that’s greater than 95% of the values.
+
+### 14.6.3 Spread
+
+-IQR() might be new — it’s quantile(x, 0.75) - quantile(x, 0.25) and gives you the range that contains the middle 50% of the data.
+
+### 14.6.4 Distributions
+
+-geom_freqpoly() can help create distribution
+
+### 14.6.5 Positions
+
+-Extracting a value at a specific position: first(x), last(x), and nth(x, n)
+-Because dplyr functions use _ to separate components of function and arguments names, these functions use na_rm instead of na.rm.
+
+### 14.6.6 With mutate()
+
+-x / sum(x) calculates the proportion of a total.
+-(x - mean(x)) / sd(x) computes a Z-score (standardized to mean 0 and sd 1).
+-(x - min(x)) / (max(x) - min(x)) standardizes to range [0, 1].
+-x / first(x) computes an index based on the first observation.
+
+
+### 14.6.7 Exercises (WARN)
+
+1. Brainstorm at least 5 different ways to assess the typical delay characteristics of a group of flights. When is mean() useful? When is median() useful? When might you want to use something else? Should you use arrival delay or departure delay? Why might you want to use data from planes?
+
+-When is mean() useful?: when I want to get an overall sense of the typical delay in a group of flights, and understand the central tendency of the data
+
+- When is median() useful?: In the case we want to assess the central value that separates the higher half of delays from the lower half.
+
+-When might you want to use something else? :When I want to specify the data, like checking calculating quantiles (e.g., 25th percentile, 75th percentile) or percentiles to pick up performance on specific flight.
+
+2. Which destinations show the greatest variation in air speed?
+```{r}
+flights |>
+  group_by(dest) |>
+  summarize(variation = sd(distance/air_time, na.rm = TRUE)) |>
+  arrange(desc(variation)) |>
+  head(5)
+```
+-The OKC shows the greatest variation in air speed
+
+3.Create a plot to further explore the adventures of EGE. Can you find any evidence that the airport moved locations? Can you find another variable that might explain the difference? (Why this is empty?)
+
+```{r，message = FALSE}
+EGE_flights <- flights |>
+  filter(dest == "EGE")
+
+EGE_flights |>
+  group_by(year) |>
+  summarize(num_flights = n()) |>
+  ggplot(aes(x = year, y = num_flights)) +
+  geom_line() +
+  labs(x = "Year",
+       y = "Number of Flights")
+```
+
+
+# 15  Strings
+
+## 15.1.1 Prerequisites
+```{r}
+library(tidyverse)
+library(babynames)
+```
+
+## 15.2 Creating a string
+
+-You can create a string using either single quotes (') or double quotes ("). There’s no difference in behavior between the two, so in the interests of consistency, the tidyverse style guide recommends using ", unless the string contains multiple ".
+
+### 15.2.1 Escapes
+
+```{r}
+#To include a literal single or double quote in a string, you can use \ to “escape” it:
+double_quote <- "\"" # or '"'
+single_quote <- '\'' # or "'"
+double_quote
+single_quote
+
+#So if you want to include a literal backslash in your string, you’ll need to escape it: "\\":
+backslash <- "\\"
+backslash
+
+#To see the raw contents of the string, use str_view()
+x <- c(single_quote, double_quote, backslash)
+x
+
+str_view(x)
+```
+
+### 15.2.2 Raw strings
+
+-A raw string usually starts with r"( and finishes with )". But if your string contains )" you can instead use r"[]" or r"{}", and if that’s still not enough, you can insert any number of dashes to make the opening and closing pairs unique, e.g., r"--()--", r"---()---", etc.
+
+### 15.2.3 Other special characters
+
+-The most common are \n, a new line, and \t, tab. You’ll also sometimes see strings containing Unicode escapes that start with \u or \U.
+
+### 15.2.4 Exercises
+
+1. Create strings that contain the following values:
+
+He said "That's amazing!"
+
+\a\b\c\d
+
+\\\\\\
+
+```{r}
+t1524 <- r"('He said "That's amazing!"'
+"\a\b\c\d"
+"\\\\\\")" 
+t1524
+str_view(t1524)
+```
+
+2. Create the string in your R session and print it. What happens to the special “\u00a0”? How does str_view() display it? Can you do a little googling to figure out what this special character is?
+
+```{r}
+x <- "This\u00a0is\u00a0tricky"
+x
+str_view(x)
+
+#lets try
+x <- c("This", "\u00a0", "is", "\u00a0", "tricky")
+x
+```
+-“\u00a0” does not generate results, and it is NO-BREAK SPACE!
+
+## 15.3 Creating many strings from data
+
+### 15.3.1 str_c()
+
+-str_c() takes any number of vectors as arguments and returns a character vector
+
+```{r}
+#If you want missing values to display in another way, use coalesce() to replace them. Depending on what you want, you might use it either inside or outside of str_c():
+df <- tibble(name = c("Flora", "David", "Terra", NA))
+df |> 
+  mutate(
+    greeting1 = str_c("Hi ", coalesce(name, "you"), "!"),
+    greeting2 = coalesce(str_c("Hi ", name, "!"), "Hi!")
+  )
+```
+
+
+### 15.3.2 str_glue()
+
+- str_glue() converts missing values to the string "NA".
+
+### 15.3.3 str_flatten()
+
+-  str_flatten() takes a character vector and combines each element of the vector into a single string, and work well with summarize()
+
+### 15.3.4 Exercises
+
+1.Compare and contrast the results of paste0() with str_c() for the following inputs:
+
+```{r}
+str_c("hi ", NA)
+paste0("hi ", NA)
+
+paste0(letters[1:2], letters[1:3])
+
+```
+In the first case, paste9() treat NA as a string, and return "hi NA". In the second case, In the second case, the str_c() cannot recycle the designated values in letters.
+
+2. What’s the difference between paste() and paste0()? How can you recreate the equivalent of paste() with str_c()?
+
+-?paste(), ?paste0()
+-paste0() is similar to paste(), but it has no separator. The return of paste0() will have no blank between values.
+
+3. Convert the following expressions from str_c() to str_glue() or vice versa:
+
+str_c("The price of ", food, " is ", price)
+
+str_glue("I'm {age} years old and live in {country}")
+
+str_c("\\section{", title, "}")
+
+
+-food <- c('food')
+-price <-c('price')
+-age <- c('age')
+-country <- c('country')
+
+-str_glue("The price of {food} is {price}")
+
+-str_c("I'm ", age, " years old and live in ", country)
+
+-str_glue("\\section{{{title}}}")
+
+
+## 15.4 Extracting data from strings
+
+### 15.4.1 Separating into rows
+
+-The most common case is requiring separate_longer_delim() to split based on a delimiter.
+
+-separate_longer_position() is suitable for dataset with a very compact format where each character is used to record a value
+
+## 15.4.2 Separating into columns
+
+-separate_wider_delim() can separate a string into columns, but it needs the delimiter and the names in the arguments.
+
+-In the argument, you can use an NA name to omit it from results.
+
+-separate_wider_position() works a little differently because you typically want to specify the width of each column. So you give it a named integer vector, where the name gives the name of the new column, and the value is the number of characters it occupies. You can omit values from the output by not naming them
+
+## 15.4.3 Diagnosing widening problems
+
+-separate_wider_delim() provides two arguments to help if some of the rows don’t have the expected number of pieces: too_few and too_many.
+
+- too_few = "debug" to ensure that new problems become errors. too_few = "align_start" and too_few = "align_end" fill in the missing pieces with NAs and move on.
+
+
+## 15.5 Letters
+
+### 15.5.1 Length
+
+-str_length() tells you the number of letters in the string
+
+### 15.5.2 Subsetting
+
+-You can extract parts of a string using str_sub(string, start, end), where start and end are the positions where the substring should start and end. 
+
+### Exercises (WARN)
+
+1. We could use str_sub() with mutate() to find the first and last letter of each name (dont forget place the position of rows.)
+
+```{r}
+babynames <- babynames::babynames
+babynames |>
+  mutate(
+    first_letter = str_sub(name, 1, 1),
+    last_letter = str_sub(name, -1, -1)
+  )
+```
+2. When computing the distribution of the length of babynames, why did we use wt = n?
+Use str_length() and str_sub() to extract the middle letter from each baby name. What will you do if the string has an even number of characters?
+
+-We use wt = n becasue it is a simple way to  count the occurrences of each unique name of babies (?)
+```{r}
+babynames |>
+  mutate(
+    middle_letter = ifelse(str_length(name) %% 2 == 1, 
+                            str_sub(name, str_length(name) %/% 2 + 1,
+                                    str_length(name) %/% 2 + 1),
+                           str_sub(name, str_length(name) %/% 2,
+                                   str_length(name) %/% 2 + 1) ))
+```
+
+3. Are there any major trends in the length of babynames over time? What about the popularity of first and last letters?
+
+```{r}
+
+#Part 1
+library(babynames)
+babynames1 <- babynames |>
+  group_by(year) |>
+  mutate(average_name_length = mean(nchar(name)))
+
+ggplot(data = babynames1, aes(x = year, y = average_name_length)) +
+  geom_line() +
+  labs(x = "Year", y = "Average Name Length") +
+  ggtitle("Trends in the Length of Baby Names Over Time")
+
+
+#Part 2
+babynames2 <- babynames |>
+  mutate(first_letter = str_sub(name, 1, 1),
+         last_letter = str_sub(name, -1, -1)) |>
+  group_by(first_letter) |>
+  mutate(first_letter_count = n()) |>
+  group_by(last_letter) |>
+  mutate(last_letter_count = n())
+
+ggplot(data = babynames2, aes(x = first_letter, y = first_letter_count)) +
+  geom_bar(stat = "identity") +
+  labs(x = "First Letter", y = "Count") +
+  ggtitle("Popularity of First Letters")
+
+ggplot(data = babynames2, aes(x = last_letter, y = last_letter_count)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Last Letter", y = "Count") +
+  ggtitle("Popularity of Last Letters")
+```
+
+## 15.6 Non-English text
+
+### 15.6.1 Encoding
+
+-encoding = () add certain names of languages.
+
+### 15.6.2 Letter variations
+
+-Working in languages with accents poses a significant challenge when determining the position of letters (e.g., with str_length() and str_sub())
+
+-Note that a comparison of these strings with == interprets these strings as different, while the handy str_equal() function in stringr recognizes that both have the same appearance
+
+-locale = can help adapt different languages' unique formats.
+
+# 16  Regular expressions
+
+## 16.1 Introduction
+
+```{r}
+library(tidyverse)
+library(babynames)
+```
+
+## 16.3 Key functions
+
+### 16.3.1 Detect matches
+
+-str_detect() returns a logical vector that is TRUE if the pattern matches an element of the character vector and FALSE otherwise
+
+### 16.3.2 Count matches
+
+-str_count()tells you how many matches there are in each string.
+
+- str_to_lower() convert words to lower case.
+
+### 16.3.3 Replace values
+
+-str_replace() replaces the first match, and as the name suggests, str_replace_all() replaces all matches
+
+-str_remove() and str_remove_all() are handy shortcuts for str_replace(x, pattern, "")
+
+### 16.3.4 Extract variables
+
+-To extract this data using separate_wider_regex() we just need to construct a sequence of regular expressions that match each piece. If we want the contents of that piece to appear in the output, we give it a name. 
+"separate_wider_regex(
+    str,
+    patterns = c(
+      "<", 
+      name = "[A-Za-z]+", 
+      ">-", 
+      gender = ".",
+      "_",
+      age = "[0-9]+"
+    )
+  )"
+  
+### 16.3 Exercises (warn)
+
+1.What baby name has the most vowels? What name has the highest proportion of vowels? (Hint: what is the denominator?)
+```{r}
+#Baby name with the most vowels
+babynames |>
+  mutate(vowel_count = str_count(name, "[aeiouAEIOU]")) |>
+  filter(vowel_count == max(vowel_count)) |>
+  distinct(name)
+#Baby name has the highest proportion of vowels
+babynames |>
+  mutate(vowel_count = str_count(name, "[aeiouAEIOU]"))|>
+  mutate(vowel_proportion = vowel_count / nchar(name)) |>
+  filter(vowel_proportion == max(vowel_proportion)) |>
+  select(name, vowel_proportion)
+```
+
+2.Replace all forward slashes in "a/b/c/d/e" with backslashes. What happens if you attempt to undo the transformation by replacing all backslashes with forward slashes? (We’ll discuss the problem very soon.)
+```{r}
+original<- "F/-/1/5/E"
+replaced<- gsub("/", "\\", original)
+undo_string <- gsub("\\\\", "/", replaced)
+replaced
+undo_string
+```
+-Nothing changes when attempted to undo the transformation by replacing all backslashes with forward slashes.
+
+3.Implement a simple version of str_to_lower() using str_replace_all().
+
+4.Create a regular expression that will match telephone numbers as commonly written in your country.
+
+```{r}
+x <- c("13562475567")
+str_view(x, "\\d{3}-\\d{4}-\\d{4}")
+```
+
+## 16.4 Pattern details
+
+### 16.4.1 Escaping
+
+-We use strings to represent regular expressions, and \ is also used as an escape symbol in strings. So to create the regular expression \. we need the string "\\."
+
+### 16.4.2 Anchors
+
+-Anchor the regular expression using ^ to match the start or $ to match the end
+
+-To force a regular expression to match only the full string, anchor it with both ^ and $
+
+-Match the boundary between words (i.e. the start or end of a word) with \b
+
+### 16.4.3 Character classes
+
+-There are many pairs for characters(cannot remember them all by now).
+
+### 16.4.4 Quantifiers
+
+-{n} matches exactly n times.
+
+-{n,} matches at least n times.
+
+-{n,m} matches between n and m times.
+
+### 16.4.5 Operator precedence and parentheses
+
+-quantifiers have high precedence and alternation has low precedence which means that ab+ is equivalent to a(b+), and ^a|b$ is equivalent to (^a)|(b$). 
+### 16.4.6 Grouping and capturing
+
