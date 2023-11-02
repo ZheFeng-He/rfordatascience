@@ -1849,9 +1849,13 @@ flights |>
 #Find the shortest flight to each destination
 shortest_flight <- flights |>
   group_by(dest) |>
-  filter(air_time == min(air_time)) |>
-  select(dest, shortest_time = air_time)
-shortest_flight
+  mutate(shortest_time = min(air_time), 
+         mean_time = mean(air_time)) |>
+  ungroup() |>
+  mutate(diff_from_short = air_time-shortest_time, 
+         diff_from_mean = air_time-mean_time) %>%
+  arrange(diff_from_mean) |>
+  select(dest, shortest_time, air_time, diff_from_mean, diff_from_short, tailnum)
 #Compute the air time of a flight relative to the shortest flight to that destination.
 flights |>
   left_join(shortest_flight, by = "dest") |> 
