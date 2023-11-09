@@ -2265,6 +2265,19 @@ undo_string
 
 3.Implement a simple version of str_to_lower() using str_replace_all().
 
+```{r}
+replacements <- c(
+  "A" = "a", "B" = "b", "C" = "c", "D" = "d", "E" = "e",
+  "F" = "f", "G" = "g", "H" = "h", "I" = "i", "J" = "j",
+  "K" = "k", "L" = "l", "M" = "m", "N" = "n", "O" = "o",
+  "P" = "p", "Q" = "q", "R" = "r", "S" = "s", "T" = "t",
+  "U" = "u", "V" = "v", "W" = "w", "X" = "x", "Y" = "y",
+  "Z" = "z"
+)
+lower_words <- str_replace_all(words, pattern = replacements)
+head(lower_words)
+```
+
 4.Create a regular expression that will match telephone numbers as commonly written in your country.
 
 ```{r}
@@ -2302,4 +2315,720 @@ str_view(x, "\\d{3}-\\d{4}-\\d{4}")
 
 -quantifiers have high precedence and alternation has low precedence which means that ab+ is equivalent to a(b+), and ^a|b$ is equivalent to (^a)|(b$). 
 ### 16.4.6 Grouping and capturing
+-\1 refers to the match contained in the first parenthesis, \2 in the second parenthesis, and so on.
+
+
+### 16.4.7 Exercises
+
+1.How would you match the literal string "'\? How about "$^$"?
+
+For "'\:  \"\\'\\\\,  \\' to express', \\\\ to express \
+For "$^$": \\$\\^\\$
+
+2.Explain why each of these patterns don’t match a \: "\", "\\", "\\\".
+
+This is because the backslash character is a special character in regular expressions and needs to be escaped to be treated as a literal character.
+
+For "\": treat backslash as an escape character rather than a literal backslash
+
+For "\\": the backslash character is not escaped, so the regular expression engine interprets it as an escape character and expects another character to follow it. But there is no following. 
+
+For "\\\": The first backslash "\" is used to escape the second backslash "\". This means the pattern is looking for a literal backslash. But "\\" xpects another character to follow it, while there is no following.
+
+3.Given the corpus of common words in stringr::words, create regular expressions that find all words that:
+
+a.Start with “y”.
+("^y")
+
+b.Don’t start with “y”.
+("^[^y]")
+
+c.End with “x”.
+("x$")
+
+d.Are exactly three letters long. (Don’t cheat by using str_length()!) 
+("^[a-z]{3}$")
+
+e.Have seven letters or more.
+("^[a-z]{7,}$")
+
+f.Contain a vowel-consonant pair.
+("[aeiou][^aeiou]")
+
+g.Contain at least two vowel-consonant pairs in a row.
+("[aeiou][^aeiou][aeiou][^aeiou]")
+
+h.Only consist of repeated vowel-consonant pairs.
+("^(?:[aeiou][^aeiou])+$")
+
+4.Create 11 regular expressions that match the British or American spellings for each of the following words: airplane/aeroplane, aluminum/aluminium, analog/analogue, ass/arse, center/centre, defense/defence, donut/doughnut, gray/grey, modeling/modelling, skeptic/sceptic, summarize/summarise. Try and make the shortest possible regex!
+
+a(ero)?plane
+
+alumin(ium|um)
+
+analog(ue)?
+
+ar?se
+
+cent(re|er)
+
+defen(s|c)e
+
+d(ough)?nut
+
+gr(a|e)y
+
+model(ling)?
+
+ske(ptic|ptical)?
+
+summar(ize|ise)
+
+
+5.Switch the first and last letters in words. Which of those strings are still words?
+```{r}
+switched <- str_replace(words, "^(.)(.*)(.)$", "\\3\\2\\1")
+words[words %in% switched]
+```
+
+6.Describe in words what these regular expressions match: (read carefully to see if each entry is a regular expression or a string that defines a regular expression.)
+
+a. ^.*$
+This expression matches any string or line that contains any character, even it is a line or empty.
+
+b. "\\{.+\\}"
+This regular expression matches a string that contains a pair of curly braces (i.e., { and }) with one or more characters in between.
+ 
+c. \d{4}-\d{2}-\d{2}
+This regular expression matches a date format in the form of "YYYY-MM-DD," where \d represents a digit (0-9).
+
+d. "\\\\{4}"
+This regular expression matches the literal string "{4}" within double quotes. It looks for the exact sequence of characters, including the escape character \.
+
+e. \..\..\..
+This regular expression matches a string containing three periods (dots), separated by any character.
+
+f. (.)\1\1
+This regular expression matches any character followed by two identical characters. The (.) captures any character, and \1\1 checks if the next two characters are the same as the first character captured.
+
+g. "(..)\\1"
+his regular expression matches a string enclosed in double quotes that consists of two identical characters followed by another two identical characters. It captures the first two characters and checks if the next two are the same.
+
+7.Solve the beginner regexp crosswords at https://regexcrossword.com/challenges/beginner.
+
+
+## 16.5 Pattern control
+
+### 16.5.1 Regex flags
+
+- The most useful flag is probably ignore_case = TRUE because it allows characters to match either their uppercase or lowercase forms
+
+- dotall = TRUE lets . match everything, including \n
+
+- multiline = TRUE makes ^ and $ match the start and end of each line rather than the start and end of the complete string
+
+-comments = TRUE tweaks the pattern language to ignore spaces and new lines, as well as everything after #. This allows you to use comments and whitespace to make complex regular expressions more understandable
+
+### 16.5.2 Fixed matches
+
+-You can opt-out of the regular expression rules by using fixed()
+
+-fixed() also gives you the ability to ignore case
+
+-If you’re working with non-English text, you will probably want coll() instead of fixed(), as it implements the full rules for capitalization as used by the locale you specify. 
+
+## 16.6 Practice
+
+### 16.6.1 Check your work
+
+- Step by step construct your pattern in finding the target matches.
+
+- And pay attention to the details in overlapping other strings.
+
+### 16.6.2 Boolean operations
+
+- Imagine we want to find words that only contain consonants. One technique is to create a character class that contains all letters except for the vowels ([^aeiou]), then allow that to match any number of letters ([^aeiou]+), then force it to match the whole string by anchoring to the beginning and the end (^[^aeiou]+$)
+
+- But you can make this problem a bit easier by flipping the problem around. Instead of looking for words that contain only consonants, we could look for words that don’t contain any vowels
+
+-If you get stuck trying to create a single regexp that solves your problem, take a step back and think if you could break the problem down into smaller pieces, solving each challenge before moving onto the next one.
+
+
+### 16.6.3 Creating a pattern with code
+
+-create the pattern from the vector using str_c() and str_flatten()
+
+-whenever you create patterns from existing strings it’s wise to run them through str_escape() to ensure they match literally
+
+### 16.6.4 Exercises (Q)
+
+1.For each of the following challenges, try solving it by using both a single regular expression, and a combination of multiple str_detect() calls.
+
+a.Find all words that start or end with x.
+-str_extract_all(something, "\\b\\w*x\\w*\\b")[[1]]
+
+b.Find all words that start with a vowel and end with a consonant.
+-str_detect(something, "^x|[^x]$")
+pattern <- "\\b[aeiouAEIOU][a-zA-Z]*[^aeiouAEIOU\\W]\\b"
+
+c.Are there any words that contain at least one of each different vowel?
+pattern <- "\\b(?=.*a)(?=.*e)(?=.*i)(?=.*o)(?=.*u)\\w+\\b"
+
+2.Construct patterns to find evidence for and against the rule “i before e except after c”?
+-pattern_for_ie_after_c <- "\\b\\w*cie\\w*\\b"
+-pattern_for_cei <- "\\b\\w*[^c]cei\\w*\\b"
+
+
+3.colors() contains a number of modifiers like “lightgray” and “darkblue”. How could you automatically identify these modifiers? (Think about how you might detect and then removed the colors that are modified).
+
+4.Create a regular expression that finds any base R dataset. You can get a list of these datasets via a special use of the data() function: data(package = "datasets")$results[, "Item"]. Note that a number of old datasets are individual vectors; these contain the name of the grouping “data frame” in parentheses, so you’ll need to strip those off.
+
+-base_datasets <- data(package = "datasets")$results[, "Item"]
+
+-regex_pattern <- "^(\\w+)(\\s*\\(.*\\))?$"
+
+-matched_datasets <- character()
+
+## 16.7 Regular expressions in other places
+
+### 16.7.1 tidyverse
+
+-There are three other particularly useful places where you might want to use a regular expressions
+
+-matches(pattern) will select all variables whose name matches the supplied pattern. 
+
+-pivot_longer()'s names_pattern argument takes a vector of regular expressions, just like separate_wider_regex(). It’s useful when extracting data out of variable names with a complex structure
+
+-The delim argument in separate_longer_delim() and separate_wider_delim() usually matches a fixed string, but you can use regex() to make it match a pattern. 
+
+### 16.7.2 Base R
+
+-apropos(pattern) searches all objects available from the global environment that match the given pattern. 
+
+# 17  Factors
+
+## 17.2 Factor basics
+
+-Create a list of the valid levels, and then create a factor following these valid levels.
+
+-If you omit the levels, they’ll be taken from the data in alphabetical order
+
+-Sorting alphabetically is slightly risky because not every computer will sort strings in the same way. So forcats::fct() orders by first appearance
+
+-If you ever need to access the set of valid levels directly, you can do so with levels()
+
+## 17.3 General Social Survey
+
+1.Explore the distribution of rincome (reported income). What makes the default bar chart hard to understand? How could you improve the plot?
+
+```{r}
+ggplot(gss_cat, aes(rincome)) +
+  geom_bar() +
+  scale_x_discrete(drop = FALSE)
+```
+The default bar chart's x-axis is unreadable for overlapping labels.
+
+```{r}
+#Switch around and do scale_x_discrete
+ggplot(gss_cat, aes(rincome)) +
+  geom_bar() +
+  scale_x_discrete(drop = FALSE) +
+  coord_flip()
+```
+2.What is the most common relig in this survey? What’s the most common partyid?
+
+```{r}
+#Most common relig
+gss_cat %>%
+  count(relig) %>%
+  arrange(-n) %>%
+  head(3)
+
+#Most common partyid
+gss_cat %>%
+  count(partyid) %>%
+  arrange(-n) %>%
+  head(3)
+```
+
+3.Which relig does denom (denomination) apply to? How can you find out with a table? How can you find out with a visualization?
+
+```{r}
+#Which relig does denom (denomination) apply to
+levels(gss_cat$denom)
+
+#How can you find out with a table
+gss_cat %>%
+  filter(!denom %in% c("No answer", "Other", "Don't know", "Not applicable",   "No denomination")) %>%
+  count(relig)
+
+#How can you find out with a visualization
+gss_cat %>%
+  count(relig, denom) %>%
+  ggplot(aes(x = relig, y = denom, size = n)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+## 17.4 Modifying factor order
+
+1. There are some suspiciously high numbers in tvhours. Is the mean a good summary?
+```{r}
+gss_cat %>%
+  filter(!is.na(tvhours)) %>%
+  ggplot(aes(x = tvhours)) +
+  geom_histogram(binwidth = 1)
+```
+There are some outliners in tvhours. It is better to use median instead of mean.
+
+2. For each factor in gss_cat identify whether the order of the levels is arbitrary or principled.
+```{r}
+
+levels(gss_cat$marital)
+#marital is arbitrary
+
+levels(gss_cat$race)
+#race is arbitrary
+
+levels(gss_cat$rincome)
+#rincome is principled
+
+levels(gss_cat$partyid)
+#partyid is arbitrary
+
+levels(gss_cat$relig)
+#relig is arbitrary
+
+levels(gss_cat$denom)
+#denom is arbitrary
+```
+
+3. Why did moving “Not applicable” to the front of the levels move it to the bottom of the plot?
+
+-Because it is determined by the factor level. Combine fct_relevel() and “Not applicable” to the front will subsequently move “Not applicable” to the bottom of the plot.
+
+
+## 17.5 Modifying factor levels
+
+-fct_recode() will leave the levels that aren’t explicitly mentioned as is, and will warn you if you accidentally refer to a level that doesn’t exist.
+
+-If you want to collapse a lot of levels, fct_collapse() is a useful variant of fct_recode()
+
+-Sometimes you just want to lump together the small groups to make a plot or table simpler. That’s the job of the fct_lump_*() family of functions. fct_lump_lowfreq() is a simple starting point that progressively lumps the smallest groups categories into “Other”, always keeping “Other” as the smallest category.
+
+
+1. How have the proportions of people identifying as Democrat, Republican, and Independent changed over time?
+
+```{r}
+gss_cat %>%
+  mutate(partyid = fct_collapse(partyid,
+    other = c("No answer", "Don't know", "Other party"),
+    rep = c("Strong republican", "Not str republican"),
+    ind = c("Ind,near rep", "Independent", "Ind,near dem"),
+    dem = c("Not str democrat", "Strong democrat"))) |>
+  group_by(year, partyid) |>
+  summarize(n = n()) |>
+  ggplot(mapping = aes(x = year, y = n, color = fct_reorder2(partyid, year, n))) +
+  geom_point() +
+  geom_line() +
+  labs(color = 'Party',
+       x = 'Year',
+       y = 'Count')
+```
+The general trends of changing identity are similar within three groups, but Independent has the largest volume of changes.
+
+2. How could you collapse rincome into a small set of categories?
+```{r}
+gss_cat |>
+  mutate(rincome = fct_collapse(rincome,
+    "No answer" = c("No answer", "Don't know", "Refused"),
+    "$0 to 5000" = c("Lt $1000", "$1000 to 3000", "$3001 to 4000", "$4001 to 5000"),
+    "$5001 to 10000" = c("$5001 to 6000", "$6001 to 7000",
+                        "$7001 to 8000", "$8001 to 10000"))) |>
+  count(rincome)
+```
+
+3. Notice there are 9 groups (excluding other) in the fct_lump example above. Why not 10? (Hint: type ?fct_lump, and find the default for the argument other_level is “Other”.)
+
+The fct_lump function was applied to a factor variable with 10 original levels. Since the default other_level value is "Other," it combines the less frequent levels into a single "Other" level. As a result, WE have 9 groups (including the "Other" group) instead of the original 10 distinct levels.
+
+## 17.6 Ordered factors
+
+-Ordered factors, created with ordered(), imply a strict ordering and equal distance between levels: the first level is “less than” the second level by the same amount that the second level is “less than” the third level, and so on.
+
+# 18  Dates and times
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+## 18.2 Creating date/times
+
+### 18.2.1 During import
+-If your CSV contains an ISO8601 date or date-time, you don’t need to do anything; readr will automatically recognize it
+
+-For other date-time formats, you’ll need to use col_types plus col_date() or col_datetime() along with a date-time format. 
+
+-If you’re using %b or %B and working with non-English dates, you’ll also need to provide a locale(). See the list of built-in languages in date_names_langs(), or create your own with date_names(),
+
+### 18.2.2 From strings
+
+- Identify the order in which year, month, and day appear in your dates, then arrange “y”, “m”, and “d” in the same order. That gives you the name of the lubridate function that will parse your date.
+
+- ymd() and friends create dates.
+
+- To create a date/time from this sort of input, use make_date() for dates, or make_datetime() for date-times
+
+### 18.2.4 From other types
+
+-You may want to switch between a date-time and a date. That’s the job of as_datetime() and as_date():
+
+-Sometimes you’ll get date/times as numeric offsets from the “Unix Epoch”, 1970-01-01. If the offset is in seconds, use as_datetime(); if it’s in days, use as_date().
+
+### 18.2.5 Exercises
+
+1. What happens if you parse a string that contains invalid dates?
+
+```{r}
+ymd(c("2010-10-10", "bananas"))
+```
+-It will report a failed to parse.
+
+2. What does the tzone argument to today() do? Why is it important?
+
+-It is a character vector specifying which time zone you would like the current time in. It is important since different time-zones can have different dates, and tzone can help us specify the time.
+
+3. For each of the following date-times, show how you’d parse it using a readr column specification and a lubridate function.
+
+d1 <- "January 1, 2010"
+d2 <- "2015-Mar-07"
+d3 <- "06-Jun-2017"
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+d5 <- "12/30/14" # Dec 30, 2014
+t1 <- "1705"
+t2 <- "11:15:10.12 PM"
+```{r, warning=FALSE}
+library(lubridate)
+
+d1 <- "January 1, 2010"
+parse_date(d1, format = "%B %d, %Y")
+
+d2 <- "2015-Mar-07"
+parse_date(d2, format = "%Y-%b-%d")
+
+d3 <- "06-Jun-2017"
+parse_date(d3, format = "%d-%b-%Y")
+
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+parse_date(d4, format = "%B %d (%Y)")
+
+d5 <- "12/30/14"
+parsed_date5 <- parse_date(d5, format = "%m/%d/%y")
+
+t1 <- "1705"
+parsed_time1 <- hms(t1)
+
+t2 <- "11:15:10.12 PM"
+parsed_time2 <- hms(paste(t2, "12"))
+```
+## 18.3 Date-time components
+
+### 18.3.1 Getting components
+
+-You can pull out individual parts of the date with the accessor functions year(), month(), mday() (day of the month), yday() (day of the year), wday() (day of the week), hour(), minute(), and second(). These are effectively the opposites of make_datetime().
+
+-For month() and wday() you can set label = TRUE to return the abbreviated name of the month or day of the week. Set abbr = FALSE to return the full name.
+
+-We can use wday() to see that more flights depart during the week than on the weekend
+
+### 18.3.2 Rounding
+
+-An alternative approach to plotting individual components is to round the date to a nearby unit of time, with floor_date(), round_date(), and ceiling_date(). Each function takes a vector of dates to adjust and then the name of the unit to round down (floor), round up (ceiling), or round to.
+
+### 18.3.3 Modifying components
+
+-Alternatively, rather than modifying an existing variable, you can create a new date-time with update()
+
+### 18.3.4 Exercises (Q)
+
+1.How does the distribution of flight times within a day change over the course of the year?
+
+```{r}
+#Preparation
+make_datetime_100 <- function(year, month, day, time) {
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+}
+
+flights_dt <- flights |> 
+  filter(!is.na(dep_time), !is.na(arr_time)) |> 
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+  ) |> 
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+flights_dt
+```
+
+```{r}
+#Plot
+flights_dt |>
+  filter(!is.na(dep_time)) |>
+  mutate(dep_hour = update(dep_time, yday = 1)) |>
+  mutate(month = factor(month(dep_time))) |>
+  ggplot(aes(dep_hour, group = month, color = month))+
+  geom_freqpoly(binwidth = 2000 * 2000)
+```
+
+2.Compare dep_time, sched_dep_time and dep_delay. Are they consistent? Explain your findings.
+```{r}
+flights_dt |> 
+  select(contains('dep')) |>
+  mutate(cal_delay = as.numeric(dep_time - sched_dep_time) / 60) |>
+  filter(dep_delay != cal_delay)
+```
+-They are not consistent. There are existing minor time difference between scheduled departure time and departure time. Such difference can be explained by the delay time, which is divert from scheduled time. 
+
+3.Compare air_time with the duration between the departure and arrival. Explain your findings. (Hint: consider the location of the airport.) (Why duration is ZERO?)
+```{r}
+flights_dt |>
+  mutate(
+    flight_duration = as.numeric(arr_time - dep_time),
+    air_time_mins = air_time,
+    diff = flight_duration - air_time_mins
+  ) |>
+  select(origin, dest, flight_duration, air_time_mins, diff)
+```
+
+4.How does the average delay time change over the course of a day? Should you use dep_time or sched_dep_time? Why?
+```{r, message=FALSE}
+#dep_time
+flights_dt |>
+  mutate(sched_dep_hour = hour(dep_time)) |>
+  group_by(dep_time) |>
+  summarise(dep_delay = mean(dep_delay)) |>
+  ggplot(aes(y = dep_delay, x = dep_time)) +
+  geom_point() +
+  geom_smooth()
+
+#sched_dep_hour
+flights_dt |>
+  mutate(sched_dep_hour = hour(sched_dep_time)) |>
+  group_by(sched_dep_hour) |>
+  summarise(dep_delay = mean(dep_delay)) |>
+  ggplot(aes(y = dep_delay, x = sched_dep_hour)) +
+  geom_point() +
+  geom_smooth()
+```
+-We use sched_dep_time since the dep_time will generate biased delays to later in the day.
+
+5.On what day of the week should you leave if you want to minimise the chance of a delay?
+```{r}
+flights_dt |>
+  mutate(weekday = wday(sched_dep_time, label = TRUE)) |>
+  group_by(weekday) |>
+  summarize(avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+            avg_arr_delay = mean(arr_delay, na.rm = TRUE)) |>
+  gather(key = 'delay', value = 'minutes', 2:3) |>
+  ggplot() +
+  geom_col(mapping = aes(x = weekday, y = minutes, fill = delay),
+           position = 'dodge')
+```
+-Looks like Saturday is the best day for a flight.
+
+6.What makes the distribution of diamonds$carat and flights$sched_dep_time similar?
+```{r}
+#The distribution of diamonds
+diamonds |>
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = carat), binwidth = .04)
+
+#The distribution of flights
+flights_dt |>
+  mutate(minutes = minute(sched_dep_time)) |>
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = minutes), binwidth = 1)
+```
+-It might be that the human factor caused this similarity for the "nice" dataset(?)
+
+7.Confirm our hypothesis that the early departures of flights in minutes 20-30 and 50-60 are caused by scheduled flights that leave early. Hint: create a binary variable that tells you whether or not a flight was delayed.
+
+```{r}
+flights_dt |>
+  mutate(delayed = dep_delay > 0,
+         minutes = minute(sched_dep_time) %/% 10 * 10,
+         minutes = factor(minutes, levels = c(0,10,20,30,40,50),
+                          labels = c('0 - 9 mins',
+                                     '10 - 19 mins',
+                                     '20 - 29 mins',
+                                     '30 - 39 mins',
+                                     '40 - 49 mins',
+                                     '50 - 50 mins'))) |>
+  group_by(minutes) |>
+  summarize(prop_early = 1 - mean(delayed, na.rm = TRUE)) |>
+  ggplot() +
+  geom_point(mapping = aes(x = minutes, y = prop_early)) +
+  labs(x = 'Scheduled departure (minutes)',
+       y = 'Proportion of early departures')
+```
+
+## 18.4 Time spans
+
+### 18.4.1 Durations
+
+-A difftime class object records a time span of seconds, minutes, hours, days, or weeks.
+
+### 18.4.2 Periods
+
+-Periods are time spans but don’t have a fixed length in seconds, instead they work with “human” times, like days and months.
+
+### 18.4.3 Intervals
+
+We can create an interval by writing start %--% end
+
+### 18.4.4 Exercises (Q, 4)
+
+1.Explain days(!overnight) and days(overnight) to someone who has just started learning R. What is the key fact you need to know?
+
+-Well, overnight itself is a boolean variable. So, days(!overnight) means overnight is FALSE, and the flight arrive on the same day. days(overnight) means overnight is TRUE, and will add one day to the arr_time and sched_arr_time datetime.
+
+2.Create a vector of dates giving the first day of every month in 2015. Create a vector of dates giving the first day of every month in the current year.
+
+```{r}
+year_2015 <- years(2015) + months(c(1:12)) + days(1)
+year_2015
+
+year_current <- years(year(today())) + months(c(1:12)) + days(1)
+year_current
+```
+
+3.Write a function that given your birthday (as a date), returns how old you are in years.
+
+```{r}
+howold <- function(d) {
+  age <- today() - d
+  return(floor(age/dyears(1)))
+}
+
+howold(ymd(19980419))
+```
+4.Why can’t (today() %--% (today() + years(1))) / months(1) work? (?)
+
+```{r}
+(today() %--% (today() + years(1))) / months(1)
+```
+
+## 18.5 Time zones
+
+-Use Sys.timezone() to find current time zone.
+
+-OlsonNames() provides all time zones.
+
+-Change time zones:1. Keep the instant in time the same, and change how it’s displayed. Use this when the instant is correct, but you want a more natural display. 2. Change the underlying instant in time. Use this when you have an instant that has been labelled with the incorrect time zone, and you need to fix it.
+
+# 19  Missing values
+
+## 19.2 Explicit missing values
+
+### 19.2.1 Last observation carried forward
+
+-When data is entered by hand, missing values sometimes indicate that the value in the previous row has been repeated (or carried forward)
+
+-We can fill in these missing values with tidyr::fill(). It works like select(), taking a set of columns.
+
+### 19.2.2 Fixed values
+
+-Some times missing values represent some fixed and known value, most commonly 0. You can use dplyr::coalesce() to replace them.
+
+-If possible, handle this when reading in the data, for example, by using the na argument to readr::read_csv(), e.g., read_csv(path, na = "99"). If you discover the problem later, or your data source doesn’t provide a way to handle it on read, you can use dplyr::na_if()
+
+### 19.2.3 NaN
+
+-a NaN (pronounced “nan”), or not a number; generally behaves just like NA. In the rare case you need to distinguish an NA from a NaN, you can use is.nan(x).
+
+## 18.3 Implicit missing values
+
+-An explicit missing value is the presence of an absence.
+
+-An implicit missing value is the absence of a presence.
+
+### 18.3.1 Pivoting
+
+-Making data wider can make implicit missing values explicit because every combination of the rows and new columns must have some value. 
+
+-By default, making data longer preserves explicit missing values, but if they are structurally missing values that only exist because the data is not tidy, you can drop them (make them implicit) by setting values_drop_na = TRUE.
+
+### 18.3.2 Complete
+
+-tidyr::complete() allows you to generate explicit missing values by providing a set of variables that define the combination of rows that should exist.
+
+-Usually call complete() with names of existing variables, filling in the missing combinations. However, sometimes the individual variables are themselves incomplete, so you can instead provide your own data. 
+
+-If the range of a variable is correct, but not all values are present, you could use full_seq(x, 1) to generate all values from min(x) to max(x) spaced out by 1.
+
+### 18.3.3 Joins
+
+-dplyr::anti_join(x, y) is a particularly useful tool here because it selects only the rows in x that don’t have a match in y. 
+
+### 18.3.4 Exercises
+
+Can you find any relationship between the carrier and the rows that appear to be missing from planes?
+
+```{r}
+missing_planes <- anti_join(flights, planes, by = "tailnum")
+
+missing_planes |>
+  group_by(carrier) |>
+  summarize(missing_planes = n()) 
+```
+It appears that AA and MQ have the most missing rows.
+
+## 18.4 Factors and empty groups
+
+-A final type of missingness is the empty group, a group that doesn’t contain any observations, which can arise when working with factors.
+
+-We can use .drop = FALSE to preserve all factor levels.
+
+-All summary functions work with zero-length vectors, but they may return results that are surprising at first glance.
+
+-Sometimes a simpler approach is to perform the summary and then make the implicit missings explicit with complete().
+
+
+# 19  Joins
+
+## 19.2 Keys
+
+### 19.2.1 Primary and foreign keys
+
+-A primary key is a variable or set of variables that uniquely identifies each observation. When more than one variable is needed, the key is called a compound key. 
+
+-A foreign key is a variable (or set of variables) that corresponds to a primary key in another table.
+
+### 19.2.2 Checking primary keys
+
+-One way to do that is to count() the primary keys and look for entries where n is greater than one. 
+
+-You should also check for missing values in your primary keys — if a value is missing then it can’t identify an observation!
+
+### 19.2.3 Surrogate keys
+
+-Surrogate keys can be particularly useful when communicating to other humans: 
+
+### 19.2.4 Exercises
+
+1. We forgot to draw the relationship between weather and airports in Figure 19.1. What is the relationship and how should it appear in the diagram?
+
+2. weather only contains information for the three origin airports in NYC. If it contained weather records for all airports in the USA, what additional connection would it make to flights?
+
+3. The year, month, day, hour, and origin variables almost form a compound key for weather, but there’s one hour that has duplicate observations. Can you figure out what’s special about that hour?
+
+4. We know that some days of the year are special and fewer people than usual fly on them (e.g., Christmas eve and Christmas day). How might you represent that data as a data frame? What would be the primary key? How would it connect to the existing data frames?
+
+5. Draw a diagram illustrating the connections between the Batting, People, and Salaries data frames in the Lahman package. Draw another diagram that shows the relationship between People, Managers, AwardsManagers. How would you characterize the relationship between the Batting, Pitching, and Fielding data frames?
+
 
