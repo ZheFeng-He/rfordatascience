@@ -1853,15 +1853,15 @@ shortest_flight <- flights |>
          mean_time = mean(air_time)) |>
   ungroup() |>
   mutate(diff_from_short = air_time-shortest_time, 
-         diff_from_mean = air_time-mean_time) %>%
+         diff_from_mean = air_time-mean_time) |>
   arrange(diff_from_mean) |>
   select(dest, shortest_time, air_time, diff_from_mean, diff_from_short, tailnum)
 #Compute the air time of a flight relative to the shortest flight to that destination.
-flights |>
-  left_join(shortest_flight, by = "dest") |> 
-  mutate(relative_air_time = air_time / shortest_time) |>
-  arrange(desc(relative_air_time)) |>
-  head(10)
+#flights |>
+  #left_join(shortest_flight, by = "dest") |> 
+  #mutate(relative_air_time = air_time / shortest_time) |>
+  #arrange(desc(relative_air_time)) |>
+  #head(10)
 ```
 -Flight N729JB, N531JB, and N566JB are the top three most delayed in the air ?
 
@@ -2785,8 +2785,8 @@ flights_dt |>
   filter(!is.na(dep_time)) |>
   mutate(dep_hour = update(dep_time, yday = 1)) |>
   mutate(month = factor(month(dep_time))) |>
-  ggplot(aes(dep_hour, group = month, color = month))+
-  geom_freqpoly(binwidth = 2000 * 2000)
+  ggplot(aes(x=dep_hour, group = month, color = month))+
+  geom_freqpoly(binwidth = 200 * 200)
 ```
 
 2.Compare dep_time, sched_dep_time and dep_delay. Are they consistent? Explain your findings.
@@ -3026,6 +3026,11 @@ It appears that AA and MQ have the most missing rows.
 ### 19.2.4 Exercises
 
 1. We forgot to draw the relationship between weather and airports in Figure 19.1. What is the relationship and how should it appear in the diagram?
+```{r}
+library(nycflights13)
+summary(weather)
+summary(airports)
+```
 
 2. weather only contains information for the three origin airports in NYC. If it contained weather records for all airports in the USA, what additional connection would it make to flights?
 
