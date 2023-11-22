@@ -3768,3 +3768,23 @@ library(arrow)
 
 
 
+## 24 XML special code challenge! 
+
+Can you retrieve this XML file: 
+https://stats.oecd.org/restsdmx/sdmx.ashx/GetDataStructure/FAMILY
+
+Then, extract from the file, the list of codes and definitions from 
+<CodeList id="CL_FAMILY_IND" agencyID="OECD">
+<Name xml:lang="en">Indicator</Name>
+<Name xml:lang="fr">Indicateur</Name>
+<Code value="D1">
+
+New tibble: 
+
+variable    definition    fr_definition
+FAM1    Total fertility rate Taux de fécondité
+FAM2    Mean age of women at childbirth   Âge moyen des femmes à la naissance de l'enfant
+
+
+
+
