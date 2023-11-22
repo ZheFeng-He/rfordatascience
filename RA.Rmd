@@ -3458,9 +3458,23 @@ b. Modify sales further to get it into the following tidy format with three colu
 > 7 Brand 2  3216     5
 
 ```{r}
-
-library(stringr)
+library(tidyverse)
+# library(stringr)
+library(readxl)
 sales <- read_excel("C:/Users/He Zhefeng/Downloads/sales.xlsx", skip = 4, col_types = c("text", "numeric"))
+sales <- read_excel("sales.xlsx", skip = 3, col_names = c("id", "n"), col_types = c("text", "numeric"))
+
+sales = sales |>
+  mutate(brand = if_else(is.na(n),id,NA_character_)) %>%
+  fill(brand) %>%
+  filter(!is.na(n)) %>%
+  relocate(brand)
+  
+sum(is.na(sales$n))  
+sales_brand = sales %>%
+  filter(brand == "Brand 1")
+nrow(sales_brand)
+
 
 ```
 4.Recreate the bake_sale data frame, write it out to an Excel file using the write.xlsx() function from the openxlsx package.
