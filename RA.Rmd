@@ -2762,13 +2762,20 @@ parsed_time2 <- hms(paste(t2, "12"))
 
 ```{r}
 #Preparation
+flights |> 
+  select(year, month, day, hour, minute) |> 
+  mutate(departure = make_datetime(year, month, day, hour, minute))
+
 make_datetime_100 <- function(year, month, day, time) {
   make_datetime(year, month, day, time %/% 100, time %% 100)
 }
 
+
 flights_dt <- flights |> 
   filter(!is.na(dep_time), !is.na(arr_time)) |> 
   mutate(
+    dep_time = as.integer(dep_time),
+    arr_time = as.integer(arr_time),
     dep_time = make_datetime_100(year, month, day, dep_time),
     arr_time = make_datetime_100(year, month, day, arr_time),
     sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
@@ -3026,18 +3033,698 @@ It appears that AA and MQ have the most missing rows.
 ### 19.2.4 Exercises
 
 1. We forgot to draw the relationship between weather and airports in Figure 19.1. What is the relationship and how should it appear in the diagram?
-```{r}
-library(nycflights13)
-summary(weather)
-summary(airports)
-```
+
+-The column airports$faa is a foreign key of weather$origin.
 
 2. weather only contains information for the three origin airports in NYC. If it contained weather records for all airports in the USA, what additional connection would it make to flights?
 
+-We will be able to match the weather at the destinations as well.
+
 3. The year, month, day, hour, and origin variables almost form a compound key for weather, but there’s one hour that has duplicate observations. Can you figure out what’s special about that hour?
+
+-Because in the weather, there are two hours, one for dst, and the other presents the tzone.
 
 4. We know that some days of the year are special and fewer people than usual fly on them (e.g., Christmas eve and Christmas day). How might you represent that data as a data frame? What would be the primary key? How would it connect to the existing data frames?
 
+-We can create a new table special containing the pertaining information of the special dates. To match special with the exisiting tables, the keys would be year, month, and day.
+
 5. Draw a diagram illustrating the connections between the Batting, People, and Salaries data frames in the Lahman package. Draw another diagram that shows the relationship between People, Managers, AwardsManagers. How would you characterize the relationship between the Batting, Pitching, and Fielding data frames?
+
+```{r}
+library(Lahman)
+colnames(Lahman::Batting)
+colnames(Lahman::Salaries)
+colnames(Lahman::Managers)
+colnames(Lahman::AwardsManagers)
+```
+-Batting contains batting statistics for players. The primary keys are playerID, yearID, stint, teamID, and lgID. The players’ biographical information are stored in Master and can be matched with playerID. The salary information for each player in each year can be matched with playerID, yearID, teamID, and lgID.
+
+-Batting and Managers can be matched with playerID, yearID, teamID, and lgID. Mangers and AwardManagers are matched with playerID, yearID, teamID, and lgID.
+
+-Batting, Pitching, and Fielding can be matched with playerID, yearID, stint, teamID, and lgID.
+
+## 19.3 Basic Joins
+
+### 19.3.1 Mutating joins
+
+-A mutating join allows you to combine variables from two data frames: it first matches observations by their keys, then copies across variables from one data frame to the other. 
+
+### 19.3.2 Specifying join keys
+
+By default, left_join() will use all variables that appear in both data frames as the join key, the so called natural join.
+
+join_by(tailnum) is short for join_by(tailnum == tailnum). It’s important to know about this fuller form for two reasons. Firstly, it describes the relationship between the two tables: the keys must be equal. That’s why this type of join is often called an equi join.
+
+### 19.3.3 Filtering joins
+
+ There are two types: semi-joins and anti-joins. Semi-joins keep all rows in x that have a match in y.
+ 
+ Anti-joins are the opposite: they return all rows in x that don’t have a match in y.
+ 
+
+
+### 19.3.4 Exercises
+
+1.Find the 48 hours (over the course of the whole year) that have the worst delays Cross-reference it with the weather data. Can you see any patterns?
+```{r, warning=FALSE}
+library(nycflights13)
+flights |>
+  select(arr_delay, dep_delay, year:day, hour, origin) |>
+  arrange(desc(dep_delay)) |>
+  inner_join(weather, by = c(year = "year",
+                             month = "month",
+                             day = "day",
+                             hour = "hour",
+                             origin = "origin")) %>%
+  ggplot(aes(x = wind_dir, y = precip, color = temp)) +
+  geom_point(shape = "diamond")
+```
+-There should be no 48 hours delay as  the worst delay is 1,301 minutes which is about 21.7 hours. But the plot implies the worst delays related in the weather
+
+2.Imagine you’ve found the top 10 most popular destinations using this code:
+```{r}
+flights2 <- flights |> 
+  select(year, time_hour, origin, dest, tailnum, carrier)
+top_dest <- flights2 |>
+  count(dest, sort = TRUE) |>
+  head(10)
+```
+How can you find all flights to those destinations?
+
+```{r}
+flights_to_top_dest <- flights2 |>
+  filter(dest %in% top_dest$dest)
+```
+
+3. Does every departing flight have corresponding weather data for that hour?
+```{r}
+flights_weather <- flights |>
+  left_join(weather, by = c("origin", "time_hour"))
+
+sum(is.na(flights_weather$temp))
+```
+-There are 1573 flights that do not have corresponding weather data for that hour.
+
+4. What do the tail numbers that don’t have a matching record in planes have in common? (Hint: one variable explains ~90% of the problems.)
+```{r}
+flights_no_planes <- flights |>
+  anti_join(planes, by = "tailnum")
+flights_no_planes |>
+  count(carrier, sort = TRUE)
+```
+-The result shows that AA (American Airlines) and MQ (Envoy Air) have the most flights without a matching record in planes, accounting for about 90% of the total flights without a matching record in planes. 
+
+5. Add a column to planes that lists every carrier that has flown that plane. You might expect that there’s an implicit relationship between plane and airline, because each plane is flown by a single airline. Confirm or reject this hypothesis using the tools you’ve learned in previous chapters.
+
+```{r}
+flights_tailnum_carrier <- flights |>
+  select(tailnum, carrier)
+
+flights_tailnum_carrier <- flights_tailnum_carrier |>
+  group_by(tailnum) |>
+  summarise(carriers = paste(carrier, collapse = ", "))
+
+planes_with_carriers <- planes |>
+  left_join(flights_tailnum_carrier, by = "tailnum")
+
+planes_with_carriers |>
+  filter(str_detect(carriers, ",")) |>
+  count()
+```
+-We reject the hypothesis since there 3177 planes having flown by more than one carrier.
+
+6. Add the latitude and the longitude of the origin and destination airport to flights. Is it easier to rename the columns before or after the join?
+
+```{r}
+#Before
+
+
+flights_with_origin <- flights |>
+  left_join(airports, by = c("origin" = "faa"))
+
+
+flights_with_origin_dest <- flights_with_origin |>
+  left_join(airports, by = c("dest" = "faa"))
+
+#After
+flights_with_origin <- flights |>
+  left_join(airports, by = c("origin" = "faa"))
+
+flights_with_origin_dest <- flights_with_origin |>
+  left_join(airports, by = c("dest" = "faa"))
+
+flights_with_origin_dest
+```
+
+-It is easier to rename the columns before the join, because it avoids the confusion of the suffixes and makes the code more readable.
+
+7. Compute the average delay by destination, then join on the airports data frame so you can show the spatial distribution of delays. Here’s an easy way to draw a map of the United States:
+
+airports |>
+  semi_join(flights, join_by(faa == dest)) |>
+  ggplot(aes(x = lon, y = lat)) +
+    borders("state") +
+    geom_point() +
+    coord_quickmap()
+
+```{r}
+flights_avg_delay <- flights |>
+  group_by(dest) |>
+  summarise(avg_delay = mean(arr_delay, na.rm = TRUE))
+
+flights_avg_delay_airports <- flights_avg_delay |>
+  left_join(airports, by = c("dest" = "faa"))
+
+#flights_avg_delay_airports |>
+#  ggplot(aes(x = dest_lon, y = dest_lon)) +
+#    borders("state") +
+#    geom_point() +
+#    coord_quickmap()
+```
+
+8. You might want to use the size or color of the points to display the average delay for each airport.
+```{r, warning=FALSE}
+flights_avg_delay_airports |>
+  ggplot(aes(x = dest_lon, y = dest_lat)) +
+    borders("state") +
+    geom_point(aes(size = avg_delay)) +
+    scale_size(range = c(1, 5)) +
+    coord_quickmap()
+
+flights_avg_delay_airports |>
+  ggplot(aes(x = dest_lon, y = dest_lat)) +
+    borders("state") +
+    geom_point(aes(color = avg_delay)) +
+    scale_color_gradient2(low = "green", mid = "yellow", high = "red") +
+    coord_quickmap()
+
+```
+9. What happened on June 13 2013? Draw a map of the delays, and then use Google to cross-reference with the weather.
+```{r}
+flights_june_13 <- flights |>
+  filter(year == 2013, month == 6)
+```
+
+## 19.4 How do joins work?
+
+-A left join keeps all observations in x, Figure 19.5. Every row of x is preserved in the output because it can fall back to matching a row of NAs in y.
+
+-A right join keeps all observations in y, Figure 19.6. Every row of y is preserved in the output because it can fall back to matching a row of NAs in x. The output still matches x as much as possible; any extra rows from y are added to the end.
+
+-A full join keeps all observations that appear in x or y, Figure 19.7. Every row of x and y is included in the output because both x and y have a fall back row of NAs. Again, the output starts with all rows from x, followed by the remaining unmatched y rows.
+
+### Row matching
+
+-There are three possible outcomes for a row in x:
+
+If it doesn’t match anything, it’s dropped.
+If it matches 1 row in y, it’s preserved.
+If it matches more than 1 row in y, it’s duplicated once for each match.
+
+### 19.4.2 Filtering joins
+
+-I strongly recommend watch the graph explain...
+
+## 19.5 Non-equi joins (Please see the graph explain.)
+
+1.Cross joins match every pair of rows.
+2.Inequality joins use <, <=, >, and >= instead of ==.
+3.Rolling joins are similar to inequality joins but only find the closest match.
+4.Overlap joins are a special type of inequality join designed to work with ranges.
+
+### 19.5.1 Cross joins
+
+-Cross joins are useful when generating permutations. For example, the code below generates every possible pair of names. Since we’re joining df to itself, this is sometimes called a self-join. Cross joins use a different join function because there’s no distinction between inner/left/right/full when you’re matching every row.
+
+### 19.5.2 Inequality joins
+
+-Inequality joins are extremely general, so general that it’s hard to come up with meaningful specific use cases. One small useful technique is to use them to restrict the cross join so that instead of generating all permutations
+
+### 19.5.3 Rolling joins
+
+-Rolling joins are a special type of inequality join where instead of getting every row that satisfies the inequality. Thay are  useful when you have two tables of dates that don’t perfectly line up and you want to find (e.g.) the closest date in table 1 that comes before (or after) some date in table 2.
+
+### 19.5.4 Overlap joins
+
+-Overlap joins provide three helpers that use inequality joins to make it easier to work with intervals
+
+### Exercises
+
+1. Can you explain what’s happening with the keys in this equi join? Why are they different?
+
+x |> full_join(y, join_by(key == key))
+> # A tibble: 4 × 3
+>     key val_x val_y
+>   <dbl> <chr> <chr>
+> 1     1 x1    y1   
+> 2     2 x2    y2   
+> 3     3 x3    <NA> 
+> 4     4 <NA>  y3
+
+x |> full_join(y, join_by(key == key), keep = TRUE)
+> # A tibble: 4 × 4
+>   key.x val_x key.y val_y
+>   <dbl> <chr> <dbl> <chr>
+> 1     1 x1        1 y1   
+> 2     2 x2        2 y2   
+> 3     3 x3       NA <NA> 
+> 4    NA <NA>      4 y3
+
+- The result of the join is a new table that contains all the columns from both tables, and only the rows that have the same value for key in both tables. In the example, the first join has keep = FALSE, so only one column named key is in the result. The second join has keep = TRUE, so there are two columns named key.x and key.y in the result.
+
+2. When finding if any party period overlapped with another party period we used q < q in the join_by()? Why? What happens if you remove this inequality?
+
+-The q < q condition in the join_by function is used to avoid self-joins, which are joins of a table with itself. If we want to find the overlapping party periods, we need to compare each row in the table with every other row, except itself. The q < q condition ensures that only rows with different values of q are joined, and avoids duplicate or redundant results.
+
+#  Spreadsheets
+
+## 20.2 Excel
+
+```{r, warning=FALSE}
+library(readxl)
+library(tidyverse)
+library(writexl)
+```
+
+### 20.2.2 Getting started
+
+Most of readxl’s functions allow you to load Excel spreadsheets into R:
+
+read_xls() reads Excel files with xls format.
+read_xlsx() read Excel files with xlsx format.
+read_excel() can read files with both xls and xlsx format. It guesses the file type based on the input.
+
+### 20.2.3 Reading Excel spreadsheets
+
+-read_excel() will read the file in as a tibble.
+
+-You can specify which character strings should be recognized as NAs with the na argument
+
+-The syntax is a bit different, though. Your options are "skip", "guess", "logical", "numeric", "date", "text" or "list".
+
+-By specifying that age should be numeric, we have turned the one cell with the non-numeric entry (which had the value five) into an NA. In this case, we should read age in as "text" and then make the change once the data is loaded in R.
+
+### 20.2.4 Reading worksheets
+
+-You can read a single worksheet from a spreadsheet with the sheet argument in read_excel(). The default, which we’ve been relying on up until now, is the first sheet.
+
+-Alternatively, you can use excel_sheets() to get information on all worksheets in an Excel spreadsheet, and then read the one(s) you’re interested in.
+
+-Once you know the names of the worksheets, you can read them in individually with read_excel().
+
+-We can put worksheet together with bind_rows().
+
+### 20.2.5 Reading part of a sheet
+
+-Since many use Excel spreadsheets for presentation as well as for data storage, it’s quite common to find cell entries in a spreadsheet that are not part of the data you want to read into R.
+
+- You can use the readxl_example() function to locate the spreadsheet on your system in the directory where the package is installed. This function returns the path to the spreadsheet, which you can use in read_excel() as usual.
+
+### 20.2.6 Data types
+
+-A cell can be one of four things:
+
+-A boolean, like TRUE, FALSE, or NA.
+
+-A number, like “10” or “10.5”.
+
+-A datetime, which can also include time like “11/1/21” or “11/1/21 3:00 PM”.
+
+-A text string, like “ten”.
+
+-When working with spreadsheet data, it’s important to keep in mind that the underlying data can be very different than what you see in the cell. 
+
+### 20.2.7 Writing to Excel
+
+```{r}
+bake_sale <- tibble(
+  item     = factor(c("brownie", "cupcake", "cookie")),
+  quantity = c(10, 5, 8)
+)
+
+bake_sale
+
+write_xlsx(bake_sale, path = "bake-sale.xlsx")
+
+read_excel("bake-sale.xlsx")
+```
+
+### 20.2.8 Formatted output
+
+-The writexl package is a light-weight solution for writing a simple Excel spreadsheet, but if you’re interested in additional features like writing to sheets within a spreadsheet and styling, you will want to use the openxlsx package. 
+
+### 20.2.9 Exercises (X in Q3)
+
+1. In an Excel file, create the following dataset and save it as survey.xlsx. Alternatively, you can download it as an Excel file from here.
+
+A spreadsheet with 3 columns (group, subgroup, and id) and 12 rows. The group column has two values: 1 (spanning 7 merged rows) and 2 (spanning 5 merged rows). The subgroup column has four values: A (spanning 3 merged rows), B (spanning 4 merged rows), A (spanning 2 merged rows), and B (spanning 3 merged rows). The id column has twelve values, numbers 1 through 12.
+
+Then, read it into R, with survey_id as a character variable and n_pets as a numerical variable.
+
+```{r}
+library(readxl)
+survey <- read_excel("C:/Users/He Zhefeng/Desktop/CA/survey.xlsx", col_types = c("text", "numeric"))
+survey
+```
+
+
+2. In another Excel file, create the following dataset and save it as roster.xlsx. Alternatively, you can download it as an Excel file from here.
+
+A spreadsheet with 3 columns (group, subgroup, and id) and 12 rows. The group column has two values: 1 (spanning 7 merged rows) and 2 (spanning 5 merged rows). The subgroup column has four values: A (spanning 3 merged rows), B (spanning 4 merged rows), A (spanning 2 merged rows), and B (spanning 3 merged rows). The id column has twelve values, numbers 1 through 12.
+
+Then, read it into R. The resulting data frame should be called roster and should look like the following.
+
+```{r}
+roster <- read_excel("C:/Users/He Zhefeng/Downloads/roster.xlsx")
+roster
+```
+
+
+In a new Excel file, create the following dataset and save it as sales.xlsx. Alternatively, you can download it as an Excel file from here.
+
+A spreadsheet with 2 columns and 13 rows. The first two rows have text containing information about the sheet. Row 1 says "This file contains information on sales". Row 2 says "Data are organized by brand name, and for each brand, we have the ID number for the item sold, and how many are sold.". Then there are two empty rows, and then 9 rows of data.
+
+a. Read sales.xlsx in and save as sales. The data frame should look like the following, with id and n as column names and with 9 rows.
+
+> # A tibble: 9 × 2
+>   id      n    
+>   <chr>   <chr>
+> 1 Brand 1 n    
+> 2 1234    8    
+> 3 8721    2    
+> 4 1822    3    
+> 5 Brand 2 n    
+> 6 3333    1    
+> 7 2156    3    
+> 8 3987    6    
+> 9 3216    5
+b. Modify sales further to get it into the following tidy format with three columns (brand, id, and n) and 7 rows of data. Note that id and n are numeric, brand is a character variable.
+
+> # A tibble: 7 × 3
+>   brand      id     n
+>   <chr>   <dbl> <dbl>
+> 1 Brand 1  1234     8
+> 2 Brand 1  8721     2
+> 3 Brand 1  1822     3
+> 4 Brand 2  3333     1
+> 5 Brand 2  2156     3
+> 6 Brand 2  3987     6
+> 7 Brand 2  3216     5
+
+```{r}
+
+library(stringr)
+sales <- read_excel("C:/Users/He Zhefeng/Downloads/sales.xlsx", skip = 4, col_types = c("text", "numeric"))
+
+```
+4.Recreate the bake_sale data frame, write it out to an Excel file using the write.xlsx() function from the openxlsx package.
+```{r,warning=FALSE}
+library(tibble)
+bake_sale <- tribble(
+  ~item, ~price, ~quantity,
+  "cake", 2, 10,
+  "cookie", 1, 25,
+  "pie", 3, 8,
+  "muffin", 2, 15)
+bake_sale
+library(openxlsx)
+write.xlsx(bake_sale, "bake_sale.xlsx")
+```
+
+5.In Chapter 7 you learned about the janitor::clean_names() function to turn column names into snake case. Read the students.xlsx file that we introduced earlier in this section and use this function to “clean” the column names.
+```{r}
+library(janitor)
+students <- read_csv("https://pos.it/r4ds-students-csv") |>
+  clean_names()
+```
+
+6.What happens if you try to read in a file with .xlsx extension with read_xls()?
+
+-We will get an error message saying that the file is not a valid xls file, as read_xls() can only read files in the older xls format
+
+## 20.3 Google Sheets
+
+### 20.3.1 Prerequisites
+```{r}
+library(googlesheets4)
+library(tidyverse)
+```
+
+### 20.3.2 Getting started
+
+-The main function of the googlesheets4 package is read_sheet(), which reads a Google Sheet from a URL or a file id. This function also goes by the name range_read().
+
+-We can also create a brand new sheet with gs4_create() or write to an existing sheet with sheet_write() and friends.
+
+### 20.3.3 Reading Google Sheets
+
+-The first argument to read_sheet() is the URL of the file to read, and it returns a tibble:
+https://docs.google.com/spreadsheets/d/1V1nPp1tzOuutXFLb3G9Eyxi3qxeEhnOXUzL5_BcCQ0w.
+
+-Just like we did with read_excel(), we can supply column names, NA strings, and column types to read_sheet().
+
+-You can obtain a list of all sheets within a Google Sheet with sheet_names():
+
+-Finally, just like with read_excel(), we can read in a portion of a Google Sheet by defining a range in read_sheet(). Note that we’re also using the gs4_example() function below to locate an example Google Sheet that comes with the googlesheets4 package.
+
+### 20.3.4 Writing to Google Sheets
+
+-You can write from R to Google Sheets with write_sheet(). The first argument is the data frame to write, and the second argument is the name (or other identifier) of the Google Sheet to write to
+
+### 20.3.5 Authentication
+
+-While you can read from a public Google Sheet without authenticating with your Google account and with gs4_deauth(), reading a private sheet or writing to a sheet requires authentication so that googlesheets4 can view and manage your Google Sheets.
+
+### 20.3.6 Exercises
+
+1.Read the students dataset from earlier in the chapter from Excel and also from Google Sheets, with no additional arguments supplied to the read_excel() and read_sheet() functions. Are the resulting data frames in R exactly the same? If not, how are they different?
+```{r, warning=FALSE}
+studentsE <- read_csv("https://pos.it/r4ds-students-csv")
+# studentsG <- read_sheet("https://pos.it/r4ds-students-csv")
+
+```
+
+2.Read the Google Sheet titled survey from https://pos.it/r4ds-survey, with survey_id as a character variable and n_pets as a numerical variable.
+```{r}
+#survey <- read_sheet("https://pos.it/r4ds-survey", sheet = "survey")
+```
+
+
+3.Read the Google Sheet titled roster from https://pos.it/r4ds-roster. The resulting data frame should be called roster and should look like the following.
+
+> # A tibble: 12 × 3
+>    group subgroup    id
+#>    <dbl> <chr>    <dbl>
+#>  1     1 A            1
+#>  2     1 A            2
+#>  3     1 A            3
+#>  4     1 B            4
+#>  5     1 B            5
+#>  6     1 B            6
+#>  7     1 B            7
+#>  8     2 A            8
+#>  9     2 A            9
+#> 10     2 B           10
+#> 11     2 B           11
+#> 12     2 B           12
+
+# 21  Databases
+
+## 21.1.1 Prerequisites
+
+```{r}
+library(DBI)
+library(dbplyr)
+library(tidyverse)
+```
+
+## 21.2 Database basics
+
+-Database tables are stored on disk and can be arbitrarily large. Data frames are stored in memory, and are fundamentally limited (although that limit is still plenty large for many problems).
+
+-Database tables almost always have indexes. Much like the index of a book, a database index makes it possible to quickly find rows of interest without having to look at every single row. Data frames and tibbles don’t have indexes, but data.tables do, which is one of the reasons that they’re so fast.
+
+-Most classical databases are optimized for rapidly collecting data, not analyzing existing data. These databases are called row-oriented because the data is stored row-by-row, rather than column-by-column like R. More recently, there’s been much development of column-oriented databases that make analyzing the existing data much faster.
+
+-Client-server DBMS’s run on a powerful central server, which you connect from your computer (the client). They are great for sharing data with multiple people in an organization. Popular client-server DBMS’s include PostgreSQL, MariaDB, SQL Server, and Oracle.
+
+-Cloud DBMS’s, like Snowflake, Amazon’s RedShift, and Google’s BigQuery, are similar to client server DBMS’s, but they run in the cloud. This means that they can easily handle extremely large datasets and can automatically provide more compute resources as needed.
+
+-In-process DBMS’s, like SQLite or duckdb, run entirely on your computer. They’re great for working with large datasets where you’re the primary user.
+
+## 21.3 Connecting to a database
+
+-You’ll always use DBI (database interface) because it provides a set of generic functions that connect to the database, upload data, run SQL queries, etc.
+
+-You’ll also use a package tailored for the DBMS you’re connecting to. This package translates the generic DBI commands into the specifics needed for a given DBMS. There’s usually one package for each DBMS, e.g. RPostgres for PostgreSQL and RMariaDB for MySQL.
+
+-Concretely, you create a database connection using DBI::dbConnect(). The first argument selects the DBMS2, then the second and subsequent arguments describe how to connect to it (i.e. where it lives and the credentials that you need to access it).
+
+## 21.3.1 In this book
+
+```{r}
+con <- DBI::dbConnect(duckdb::duckdb())
+con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "duckdb")
+```
+
+## 21.3.2 Load some data
+
+```{r}
+dbWriteTable(con, "mpg", ggplot2::mpg)
+dbWriteTable(con, "diamonds", ggplot2::diamonds)
+```
+
+## 21.3.3 DBI basics
+
+-You can check that the data is loaded correctly by using a couple of other DBI functions: dbListTables() lists all tables in the database3 and dbReadTable() retrieves the contents of a table.
+
+```{r}
+dbListTables(con)
+
+con |> 
+  dbReadTable("diamonds") |> 
+  as_tibble()
+
+# you can use dbGetQuery() to get the results of running a query on the database:
+sql <- "
+  SELECT carat, cut, clarity, color, price 
+  FROM diamonds 
+  WHERE price > 15000
+"
+as_tibble(dbGetQuery(con, sql))
+```
+
+## 21.4 dbplyr basics
+
+-dbplyr is a dplyr backend, which means that you keep writing dplyr code but the backend executes it differently. In this, dbplyr translates to SQL; other backends include dtplyr which translates to data.table, and multidplyr which executes your code on multiple cores.
+
+-This object is lazy; when you use dplyr verbs on it, dplyr doesn’t do any work: it just records the sequence of operations that you want to perform and only performs them when needed. 
+
+-You can see the SQL code generated by the dplyr function show_query().
+
+-To get all the data back into R, you call collect(). Behind the scenes, this generates the SQL, calls dbGetQuery() to get the data, then turns the result into a tibble
+
+## 21.5 SQL
+
+### 21.5.1 SQL basics
+
+-The top-level components of SQL are called statements. Common statements include CREATE for defining new tables, INSERT for adding data, and SELECT for retrieving data.
+
+-A query is made up of clauses. There are five important clauses: SELECT, FROM, WHERE, ORDER BY, and GROUP BY. Every query must have the SELECT4 and FROM5 clauses and the simplest query is SELECT * FROM table, which selects all columns from the specified table . 
+
+-WHERE and ORDER BY control which rows are included and how they are ordered
+
+-GROUP BY converts the query to a summary, causing aggregation to happen
+
+-Two important differences between dplyr verbs and SELECT clauses:
+
+-1. In SQL, case doesn’t matter: you can write select, SELECT, or even SeLeCt. In this book we’ll stick with the common convention of writing SQL keywords in uppercase to distinguish them from table or variables names.
+
+-2. In SQL, order matters: you must always write the clauses in the order SELECT, FROM, WHERE, GROUP BY, ORDER BY. Confusingly, this order doesn’t match how the clauses actually evaluated which is first FROM, then WHERE, GROUP BY, SELECT, and ORDER BY.
+
+### 21.5.2 SELECT
+
+-The SELECT clause is the workhorse of queries and performs the same job as select(), mutate(), rename(), relocate(), and, as you’ll learn in the next section, summarize()
+
+-select(), rename(), and relocate() have very direct translations to SELECT as they just affect where a column appears (if at all) along with its name
+
+-The translations for mutate() are similarly straightforward: each variable becomes a new expression in SELECT
+
+### 21.5.3 FROM
+
+-The FROM clause defines the data source. It’s going to be rather uninteresting for a little while, because we’re just using single tables. 
+
+### 21.5.4 GROUP BY
+
+-group_by() is translated to the GROUP BY6 clause and summarize() is translated to the SELECT clause
+
+### 21.5.5 WHERE
+
+-filter() is translated to the WHERE clause
+
+-A few important details to note:
+
+1. | becomes OR and & becomes AND.
+
+2. SQL uses = for comparison, not ==. SQL doesn’t have assignment, so there’s no potential for confusion there.
+
+3. SQL uses only '' for strings, not "". In SQL, "" is used to identify variables, like R’s ``.
+
+-Another useful SQL operator is IN, which is very close to R’s %in%
+
+-Note that if you filter() a variable that you created using a summarize, dbplyr will generate a HAVING clause, rather than a WHERE clause. This is a one of the idiosyncrasies of SQL: WHERE is evaluated before SELECT and GROUP BY, so SQL needs another clause that’s evaluated afterwards.
+
+### 21.5.6 ORDER BY
+
+-Ordering rows involves a straightforward translation from arrange() to the ORDER BY clause
+
+### 21.5.7 Subqueries
+
+-A subquery is just a query used as a data source in the FROM clause, instead of the usual table
+
+-dbplyr typically uses subqueries to work around limitations of SQL. For example, expressions in the SELECT clause can’t refer to columns that were just created. That means that the following (silly)
+
+### 21.5.8 Joins
+
+-dplyr’s names for these functions are so closely connected to SQL that you can easily guess the equivalent SQL for inner_join(), right_join(), and full_join()
+
+### 21.5.9 Other verbs
+
+-dbplyr also translates other verbs like distinct(), slice_*(), and intersect(), and a growing selection of tidyr functions like pivot_longer() and pivot_wider(). 
+
+
+### 21.5.10 Exercises
+
+1. What is distinct() translated to? How about head()?
+
+-The distinct() function in SQL is used to remove duplicate values from a result set. The head() function in SQL is not a standard function, but some databases may have a similar function to return the first n rows of a result set.
+
+2. Explain what each of the following SQL queries do and try recreate them using dbplyr.
+
+SELECT * 
+FROM flights
+WHERE dep_delay < arr_delay
+
+SELECT *, distance / (air_time / 60) AS speed
+FROM flights
+
+-The first part of 'select' picks up flights where the delayed departure is shorter than delayed arrive.
+
+-The second part of 'select' chooses the flight speed calculated in hours.
+
+## 21.6 Function translations
+
+-In SQL, the GROUP BY clause is used exclusively for summaries so here you can see that the grouping has moved from the PARTITION BY argument to OVER
+
+-Here it’s important to arrange() the data, because SQL tables have no intrinsic order. In fact, if you don’t use arrange() you might get the rows back in a different order every time! Notice for window functions, the ordering information is repeated: the ORDER BY clause of the main query doesn’t automatically apply to window functions.
+
+-Another important SQL function is CASE WHEN. It’s used as the translation of if_else() and case_when(), the dplyr function that it directly inspired.
+
+-Another important SQL function is CASE WHEN. It’s used as the translation of if_else() and case_when(), the dplyr function that it directly inspired.
+
+# 22  Arrow
+
+## 22.1.1 Prerequisites
+
+```{r, warning=FALSE}
+library(tidyverse)
+library(arrow)
+```
+
+## 22.2 Getting the data
+
+-The data is a 9GB CSV file, available online at data.seattle.gov/Community/Checkouts-by-Title/tmmm-ytt6...
+
+## 22.3 Opening a dataset
+
+-At 9 GB, this file is large enough that we probably don’t want to load the whole thing into memory. A good rule of thumb is that you usually want at least twice as much memory as the size of the data, and many laptops top out at 16 GB. This means we want to avoid read_csv() and instead use the arrow::open_dataset()
+
+-open_dataset() will scan a few thousand rows to figure out the structure of the dataset.
+
+-Once the data has been scanned by open_dataset(), it records what it’s found and stops; it will only read further rows as you specifically request them.
+
+## 22.4 The parquet format
+
+
 
 
