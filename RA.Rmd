@@ -3927,8 +3927,12 @@ df4 |>
 ```{r}
 repos <- tibble(json = gh_repos)
 repos
+tmp = repos %>%
+  unnest_wider(name)
 ```
+
 ### EXE (*)
+
 1.Roughly estimate when gh_repos was created. Why can you only roughly estimate the date?
 
 -Because we do not know when the repurrrsive package was updated with the new data, or if the data was collected at different points in time. Therefore, we can only roughly estimate the date based on the available information.
@@ -3942,6 +3946,7 @@ owners <- repos |>
 
 owners
 ```
+
 3. Follow the steps used for titles to create similar tables for the aliases, allegiances, books, and TV series for the Game of Thrones characters.
 
 ```{r}
